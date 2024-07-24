@@ -9798,78 +9798,9 @@ function controlBlockObjRef(ctrlBlock) {
     return `${iedName}${ldInst}/${prefix}${lnClass}${lnInst}.${cbName}`;
 }
 
-const serviceType = {
-    GSEControl: "GOOSE",
-    SampledValueControl: "SMV",
-    ReportControl: "Report",
-};
-/** @returns Whether src... type ExtRef attributes match Control element*/
-function matchSrcAttributes(extRef, control) {
-    const cbName = control.getAttribute("name");
-    const srcLDInst = control.closest("LDevice")?.getAttribute("inst");
-    const srcPrefix = control.closest("LN0, LN")?.getAttribute("prefix") ?? "";
-    const srcLNClass = control.closest("LN0, LN")?.getAttribute("lnClass");
-    const srcLNInst = control.closest("LN0, LN")?.getAttribute("inst");
-    return (extRef.getAttribute("srcCBName") === cbName &&
-        extRef.getAttribute("srcLDInst") === srcLDInst &&
-        (extRef.getAttribute("srcPrefix") ?? "") === srcPrefix &&
-        (extRef.getAttribute("srcLNInst") ?? "") === srcLNInst &&
-        extRef.getAttribute("srcLNClass") === srcLNClass &&
-        extRef.getAttribute("serviceType") === serviceType[control.tagName]);
-}
-
-/** @returns all ExtRef element subscribed to a control block element */
-function findControlBlockSubscription(control) {
-    const doc = control.ownerDocument;
-    const iedName = control.closest("IED")?.getAttribute("name");
-    return Array.from(doc.querySelectorAll(`ExtRef[iedName="${iedName}"]`)).filter((extRef) => matchSrcAttributes(extRef, control));
-}
-
-/**
- * Looks up Communication section GSE or SMV addresses based on the control block
- * within the IED section (GSEControl or SampledValueControl).
- * @param ctrlBlock - SCL control block element (GSEControl or SampledValueControl)
- * @returns SCL GSE or SMV address element or null if not found.
- */
-function controlBlockGseOrSmv(ctrlBlock) {
-    const doc = ctrlBlock.ownerDocument;
-    const ctrlLdInst = ctrlBlock.closest("LDevice")?.getAttribute("inst");
-    const ied = ctrlBlock.closest("IED");
-    const addressTag = ctrlBlock.tagName === "GSEControl" ? "GSE" : "SMV";
-    const apName = ctrlBlock.closest("AccessPoint")?.getAttribute("name");
-    if (!ctrlLdInst || !ied || !apName)
-        return null;
-    const serverAts = Array.from(ied.querySelectorAll(`AccessPoint > ServerAt[apName="${apName}"`)).map((ap) => ap.closest("AccessPoint").getAttribute("name"));
-    const iedName = ied.getAttribute("name");
-    const connectedAps = `:root > Communication > SubNetwork > ConnectedAP[iedName="${iedName}"]`;
-    const connectedApNames = [apName, ...serverAts].map((ap) => `[apName="${ap}"]`);
-    const cbName = ctrlBlock.getAttribute("name");
-    const addressElement = `${addressTag}[ldInst="${ctrlLdInst}"][cbName="${cbName}"]`;
-    return doc.querySelector(crossProduct$1([connectedAps], connectedApNames, [">"], [addressElement])
-        .map((strings) => strings.join(""))
-        .join(","));
-}
-
-/** @returns control blocks for a given data attribute or data set */
-function controlBlocks(fcdaOrDataSet) {
-    const datSet = fcdaOrDataSet.closest("DataSet")?.getAttribute("name");
-    const parentLn = fcdaOrDataSet.closest("LN0, LN");
-    return Array.from(parentLn?.querySelectorAll(`:scope > ReportControl[datSet="${datSet}"],
-      :scope > GSEControl[datSet="${datSet}"],
-      :scope > SampledValueControl[datSet="${datSet}"]`) ?? []);
-}
-
-/** @returns Whether a ExtRef to FCDA reference match */
-function matchDataAttributes(extRef, fcda) {
-    return (extRef.getAttribute("ldInst") === fcda.getAttribute("ldInst") &&
-        (extRef.getAttribute("prefix") ?? "") ===
-            (fcda.getAttribute("prefix") ?? "") &&
-        extRef.getAttribute("lnClass") === fcda.getAttribute("lnClass") &&
-        (extRef.getAttribute("lnInst") ?? "") ===
-            (fcda.getAttribute("lnInst") ?? "") &&
-        extRef.getAttribute("doName") === fcda.getAttribute("doName") &&
-        (extRef.getAttribute("daName") ?? "") ===
-            (fcda.getAttribute("daName") ?? ""));
+/** @returns Whether a given element is within a Private section */
+function isPublic(element) {
+    return !element.closest("Private");
 }
 
 function isInputLeaf(input, allInputs) {
@@ -9948,6 +9879,32 @@ function sourceControlBlock(extRef) {
         .join(","));
 }
 
+/** maximum value for `lnInst` attribute */
+const maxLnInst = 99;
+Array(maxLnInst)
+    .fill(1)
+    .map((_, i) => `${i + 1}`);
+
+/** @returns Whether child `DA` with name `setSrcRef` can edited by SCL editor */
+function isSrcRefEditable(supervisionLn) {
+    const lnClass = supervisionLn.getAttribute("lnClass");
+    const cbRefType = lnClass === "LGOS" ? "GoCBRef" : "SvCBRef";
+    if (supervisionLn.querySelector(`:scope > DOI[name="${cbRefType}"] > 
+        DAI[name="setSrcRef"][valImport="true"][valKind="RO"],
+       :scope > DOI[name="${cbRefType}"] > 
+        DAI[name="setSrcRef"][valImport="true"][valKind="Conf"]`))
+        return true;
+    const rootNode = supervisionLn.ownerDocument;
+    const lnType = supervisionLn.getAttribute("lnType");
+    const goOrSvCBRef = rootNode.querySelector(`DataTypeTemplates > 
+        LNodeType[id="${lnType}"][lnClass="${lnClass}"] > DO[name="${cbRefType}"]`);
+    const cbRefId = goOrSvCBRef?.getAttribute("type");
+    const setSrcRef = rootNode.querySelector(`DataTypeTemplates > DOType[id="${cbRefId}"] > DA[name="setSrcRef"]`);
+    return ((setSrcRef?.getAttribute("valKind") === "Conf" ||
+        setSrcRef?.getAttribute("valKind") === "RO") &&
+        setSrcRef.getAttribute("valImport") === "true");
+}
+
 /** @returns Element to remove the subscription supervision */
 function removableSupervisionElement(ctrlBlock, subscriberIed) {
     const supervisionType = ctrlBlock.tagName === "GSEControl" ? "LGOS" : "LSVS";
@@ -9960,26 +9917,13 @@ function removableSupervisionElement(ctrlBlock, subscriberIed) {
     const canRemoveLn = ln.querySelector(':scope > Private[type="OpenSCD.create"]');
     return canRemoveLn ? ln : doi;
 }
-/** @returns Whether `DA` with name `setSrcRef`  can edited by SCL editor */
-function isSrcRefEditable(ctrlBlock, subscriberIed) {
+/** @returns Whether `DA` with name `setSrcRef` can edited by SCL editor */
+function isSupervisionEditable(ctrlBlock, subscriberIed) {
     const supervisionElement = removableSupervisionElement(ctrlBlock, subscriberIed);
-    const ln = supervisionElement?.closest("LN") ?? null;
-    if (!ln)
+    const supervisionLn = supervisionElement?.closest("LN") ?? null;
+    if (!supervisionLn)
         return false;
-    if (supervisionElement?.querySelector(':scope DAI[name="setSrcRef"][valImport="true"][valKind="RO"],' +
-        ' :scope DAI[name="setSrcRef"][valImport="true"][valKind="Conf"]'))
-        return true;
-    const rootNode = ln.ownerDocument;
-    const lnClass = ln.getAttribute("lnClass");
-    const cbRefType = lnClass === "LGOS" ? "GoCBRef" : "SvCBRef";
-    const lnType = ln.getAttribute("lnType");
-    const goOrSvCBRef = rootNode.querySelector(`DataTypeTemplates > 
-        LNodeType[id="${lnType}"][lnClass="${lnClass}"] > DO[name="${cbRefType}"]`);
-    const cbRefId = goOrSvCBRef?.getAttribute("type");
-    const setSrcRef = rootNode.querySelector(`DataTypeTemplates > DOType[id="${cbRefId}"] > DA[name="setSrcRef"]`);
-    return ((setSrcRef?.getAttribute("valKind") === "Conf" ||
-        setSrcRef?.getAttribute("valKind") === "RO") &&
-        setSrcRef.getAttribute("valImport") === "true");
+    return isSrcRefEditable(supervisionLn);
 }
 /** @returns Whether other subscribed ExtRef of the same control block exist */
 function isControlBlockSubscribed(extRefs) {
@@ -10004,7 +9948,7 @@ function isControlBlockSubscribed(extRefs) {
 }
 function cannotRemoveSupervision(extRefGroup) {
     return (isControlBlockSubscribed(extRefGroup.extRefs) ||
-        !isSrcRefEditable(extRefGroup.ctrlBlock, extRefGroup.subscriberIed));
+        !isSupervisionEditable(extRefGroup.ctrlBlock, extRefGroup.subscriberIed));
 }
 function groupPerControlBlock(extRefs) {
     const groupedExtRefs = {};
@@ -10047,7 +9991,7 @@ function removeSubscriptionSupervision(extRefs) {
  * references - unsubscribing.
  * ```md
  * 1. Unsubscribes external references itself:
- * -Update `ExtRef` in case later binging is used (existing `intAddr` attribute)
+ * -Update `ExtRef` in case later binding is used (existing `intAddr` attribute)
  * -Remove `ExtRef` in case `intAddr` is missing
  *
  * 2. Removes leaf `Input` elements as well
@@ -10095,6 +10039,88 @@ function unsubscribe(extRefs, options = { ignoreSupervision: false }) {
     ];
 }
 
+const serviceType = {
+    GSEControl: "GOOSE",
+    SampledValueControl: "SMV",
+    ReportControl: "Report",
+};
+/** @returns Whether src... type ExtRef attributes match Control element*/
+function matchSrcAttributes(extRef, control) {
+    const cbName = control.getAttribute("name");
+    const srcLDInst = control.closest("LDevice")?.getAttribute("inst");
+    const srcPrefix = control.closest("LN0, LN")?.getAttribute("prefix") ?? "";
+    const srcLNClass = control.closest("LN0, LN")?.getAttribute("lnClass");
+    const srcLNInst = control.closest("LN0, LN")?.getAttribute("inst");
+    const extRefSrcLNClass = extRef.getAttribute("srcLNClass");
+    const srcLnClassCheck = !extRefSrcLNClass || extRefSrcLNClass === ""
+        ? "LLN0" === srcLNClass
+        : extRefSrcLNClass === srcLNClass;
+    const extRefSrcLDInst = extRef.getAttribute("srcLDInst");
+    const srcLdInstCheck = !extRefSrcLDInst || extRefSrcLDInst === ""
+        ? extRef.getAttribute("ldInst") === srcLDInst
+        : extRefSrcLDInst === srcLDInst;
+    return (extRef.getAttribute("srcCBName") === cbName &&
+        srcLdInstCheck &&
+        (extRef.getAttribute("srcPrefix") ?? "") === srcPrefix &&
+        (extRef.getAttribute("srcLNInst") ?? "") === srcLNInst &&
+        srcLnClassCheck &&
+        extRef.getAttribute("serviceType") === serviceType[control.tagName]);
+}
+
+/** @returns all ExtRef element subscribed to a control block element */
+function findControlBlockSubscription(control) {
+    const doc = control.ownerDocument;
+    const iedName = control.closest("IED")?.getAttribute("name");
+    return Array.from(doc.querySelectorAll(`ExtRef[iedName="${iedName}"]`)).filter((extRef) => matchSrcAttributes(extRef, control));
+}
+
+/**
+ * Looks up Communication section GSE or SMV addresses based on the control block
+ * within the IED section (GSEControl or SampledValueControl).
+ * @param ctrlBlock - SCL control block element (GSEControl or SampledValueControl)
+ * @returns SCL GSE or SMV address element or null if not found.
+ */
+function controlBlockGseOrSmv(ctrlBlock) {
+    const doc = ctrlBlock.ownerDocument;
+    const ctrlLdInst = ctrlBlock.closest("LDevice")?.getAttribute("inst");
+    const ied = ctrlBlock.closest("IED");
+    const addressTag = ctrlBlock.tagName === "GSEControl" ? "GSE" : "SMV";
+    const apName = ctrlBlock.closest("AccessPoint")?.getAttribute("name");
+    if (!ctrlLdInst || !ied || !apName)
+        return null;
+    const serverAts = Array.from(ied.querySelectorAll(`AccessPoint > ServerAt[apName="${apName}"`)).map((ap) => ap.closest("AccessPoint").getAttribute("name"));
+    const iedName = ied.getAttribute("name");
+    const connectedAps = `:root > Communication > SubNetwork > ConnectedAP[iedName="${iedName}"]`;
+    const connectedApNames = [apName, ...serverAts].map((ap) => `[apName="${ap}"]`);
+    const cbName = ctrlBlock.getAttribute("name");
+    const addressElement = `${addressTag}[ldInst="${ctrlLdInst}"][cbName="${cbName}"]`;
+    return doc.querySelector(crossProduct$1([connectedAps], connectedApNames, [">"], [addressElement])
+        .map((strings) => strings.join(""))
+        .join(","));
+}
+
+/** @returns control blocks for a given data attribute or data set */
+function controlBlocks(fcdaOrDataSet) {
+    const datSet = fcdaOrDataSet.closest("DataSet")?.getAttribute("name");
+    const parentLn = fcdaOrDataSet.closest("LN0, LN");
+    return Array.from(parentLn?.querySelectorAll(`:scope > ReportControl[datSet="${datSet}"],
+      :scope > GSEControl[datSet="${datSet}"],
+      :scope > SampledValueControl[datSet="${datSet}"]`) ?? []);
+}
+
+/** @returns Whether a ExtRef to FCDA reference match */
+function matchDataAttributes(extRef, fcda) {
+    return (extRef.getAttribute("ldInst") === fcda.getAttribute("ldInst") &&
+        (extRef.getAttribute("prefix") ?? "") ===
+            (fcda.getAttribute("prefix") ?? "") &&
+        extRef.getAttribute("lnClass") === fcda.getAttribute("lnClass") &&
+        (extRef.getAttribute("lnInst") ?? "") ===
+            (fcda.getAttribute("lnInst") ?? "") &&
+        extRef.getAttribute("doName") === fcda.getAttribute("doName") &&
+        (extRef.getAttribute("daName") ?? "") ===
+            (fcda.getAttribute("daName") ?? ""));
+}
+
 function fCDAsSubscription(fcda) {
     const doc = fcda.ownerDocument;
     const iedName = fcda.closest("IED")?.getAttribute("name");
@@ -10124,6 +10150,14 @@ function removeFCDA(remove) {
     return removeActionFcda.concat(extRefActions);
 }
 
+/** @returns Updated confRev attribute of control block */
+function updatedConfRev(control) {
+    const confRev = parseInt(control.getAttribute("confRev") ?? "0", 10);
+    if (confRev === 0)
+        return `${confRev + 1}`;
+    return `${confRev + 10000}`;
+}
+
 /**
  * Utility function to remove the element `DataSet`.
  * Also checks if data must be unsubscribed, subscription supervision need
@@ -10142,7 +10176,7 @@ function removeDataSet(remove) {
     extRefEdits.push(...unsubscribe(extRefs));
     const ctrlBlockUpdates = controlBlocks(dataSet).map((ctrlBlock) => ({
         element: ctrlBlock,
-        attributes: { datSet: null, confRev: "0" },
+        attributes: { datSet: null, confRev: updatedConfRev(ctrlBlock) },
     }));
     return dataSetRemove.concat(extRefEdits, ctrlBlockUpdates);
 }
@@ -10175,14 +10209,6 @@ function removeControlBlock(remove) {
     const gse = controlBlockGseOrSmv(controlBlock);
     const gseRemove = gse ? [{ node: gse }] : [];
     return ctrlBlockRemoveAction.concat(dataSetRemove, gseRemove);
-}
-
-/** @returns Updated confRev attribute of control block */
-function updatedConfRev(control) {
-    const confRev = parseInt(control.getAttribute("confRev") ?? "0", 10);
-    if (confRev === 0)
-        return `${confRev + 1}`;
-    return `${confRev + 10000}`;
 }
 
 /** Updates `ReportControl` attributes and cross-referenced elements
@@ -10608,11 +10634,11 @@ function updateDatSet(update) {
 /**
  * Utility function to update GSEControl element attributes.
  * ```md
- * These attributes trigger addition edits
+ * These attributes trigger additional edits such as
  * - name: also updates GSE.cbName and supervision references
  * - datSet: update reference DataSet.name - when DataSet is single use
  *
- * >NOTE: confRev attribute is updated +10000 every time this function is called
+ * >NOTE: confRev attribute is updated +10000 on every data set change
  * ```
  * @param gseControl - GSEControl element
  * @param attributes -
@@ -10652,10 +10678,12 @@ function updateGSEControl(update) {
         const updateDataSet = updateDatSet(update);
         if (updateDataSet)
             updates.push(updateDataSet);
+        // remove datSet from the update to avoid schema invalidity
         else
-            delete update.attributes.datSet; // remove datSet from the update to avoid schema invalidity
+            delete update.attributes.datSet;
+        // +10000 for data set update
+        update.attributes.confRev = updatedConfRev(update.element);
     }
-    update.attributes.confRev = updatedConfRev(update.element); // +10000 for update
     return [update, ...updates];
 }
 
@@ -10753,11 +10781,11 @@ function changeGSEContent(element, options) {
 /**
  * Utility function to update SampledValueControl element attributes.
  * ```md
- * These attributes trigger addition edits
+ * These attributes trigger additional edits such as
  * - name: also updates SMV.cbName and supervision references
  * - datSet: update reference DataSet.name - when DataSet is single use
  *
- * >NOTE: confRev attribute is updated +10000 every time this function is called
+ * >NOTE: confRev attribute is updated +10000 on each data set change
  * ```
  * @param update - diff holding the `SampledValueControl` as element
  * @returns action array to update all `SampledValueControl` attributes
@@ -10796,10 +10824,12 @@ function updateSampledValueControl(update) {
         const updateDataSet = updateDatSet(update);
         if (updateDataSet)
             updates.push(updateDataSet);
+        // remove datSet from the update to avoid schema invalidity
         else
-            delete update.attributes.datSet; // remove datSet from the update to avoid schema invalidity
+            delete update.attributes.datSet;
+        // +10000 for update
+        update.attributes.confRev = updatedConfRev(update.element);
     }
-    update.attributes.confRev = updatedConfRev(update.element); // +10000 for update
     return [update, ...updates];
 }
 
@@ -10906,12 +10936,6 @@ function updateDataSet(update) {
     return [dataSetUpdate].concat(controlBlockUpdates);
 }
 
-/** maximum value for `lnInst` attribute */
-const maxLnInst = 99;
-Array(maxLnInst)
-    .fill(1)
-    .map((_, i) => `${i + 1}`);
-
 await fetch(new URL(new URL('assets/nsd-0a370a57.json', import.meta.url).href, import.meta.url)).then((res) => res.json());
 
 /** @returns ConfDataSet.maxAttributes number as `max` and the scope. */
@@ -10954,11 +10978,6 @@ function canAddFCDA(dataSet) {
     const { max } = maxAttributes(dataSet);
     const existingDataSets = dataSet.querySelectorAll(":scope > FCDA").length;
     return max > existingDataSets;
-}
-
-/** @returns Whether a given element is within a Private section */
-function isPublic(element) {
-    return !element.closest("Private");
 }
 
 /** @returns parent `tagName` s for SCL (2007B4) element tag  */
@@ -22423,6 +22442,11 @@ ReportControlEditor.styles = i$6 `
       display: flex;
       flex-direction: column;
     }
+
+    .selectionlist {
+      z-index: 2;
+    }
+
     mwc-list-item {
       --mdc-list-item-meta-size: 48px;
     }
@@ -23211,6 +23235,10 @@ GseControlEditor.styles = i$6 `
       flex-direction: column;
     }
 
+    .selectionlist {
+      z-index: 2;
+    }
+
     data-set-element-editor {
       grid-column: 1 / 2;
     }
@@ -23340,6 +23368,10 @@ let DataSetEditor = class DataSetEditor extends s$3 {
 };
 DataSetEditor.styles = i$6 `
     ${styles$7}
+
+    .selectionlist {
+      z-index: 2;
+    }
 
     data-set-element-editor {
       flex: auto;
@@ -23939,6 +23971,11 @@ SampledValueControlEditor.styles = i$6 `
       display: flex;
       flex-direction: column;
     }
+
+    .selectionlist {
+      z-index: 2;
+    }
+
     mwc-list-item {
       --mdc-list-item-meta-size: 48px;
     }
