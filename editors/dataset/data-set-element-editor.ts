@@ -34,7 +34,7 @@ import type {
 // eslint-disable-next-line import/no-duplicates
 import { SclTextField } from '@openenergytools/scl-text-field';
 
-import { addFCDAs, addFCDOs } from './foundation.js';
+import { addFCDAs, addFCDOs, getFcdaInstDesc } from './foundation.js';
 import { dataAttributeTree } from './dataAttributePicker.js';
 import { dataObjectTree } from './dataObjectPicker.js';
 
@@ -255,8 +255,14 @@ export class DataSetElementEditor extends LitElement {
           },
         });
 
+      const description = Object.values(getFcdaInstDesc(fcda))
+        .flat(Infinity as 1)
+        .join(' > ');
+
       return {
-        headline: `${doName}${daName ? `.${daName} [${fc}]` : ` [${fc}]`}`,
+        headline: `${doName}${daName ? `.${daName} [${fc}]` : ` [${fc}]`}${
+          description ? ` (${description})` : ''
+        }`,
         supportingText: `${ldInst}/${prefix}${lnClass}${lnInst}`,
         actions,
       };
@@ -280,7 +286,7 @@ export class DataSetElementEditor extends LitElement {
         ?disabled=${!canAddFCDA(this.element!)}
         @click=${() => this.doPickerDialog?.show()}
       ></mwc-button
-      ><mwc-dialog id="dopicker" heading="Add Data Attributes">
+      ><mwc-dialog id="dopicker" heading="Add Data Objects">
         <oscd-tree-grid .tree=${dataObjectTree(server)}></oscd-tree-grid>
         <mwc-button
           slot="secondaryAction"
@@ -358,7 +364,7 @@ export class DataSetElementEditor extends LitElement {
         id="${identity(this.element)}"
         label="desc"
         .value=${this.desc}
-        supportingText="DateSet Description"
+        supportingText="DataSet Description"
         nullable
         @input=${() => this.onInputChange()}
       >
@@ -442,6 +448,7 @@ export class DataSetElementEditor extends LitElement {
 
     action-list {
       z-index: 0;
+      justify-content: space-between;
     }
 
     *[iconTrailing='search'] {
