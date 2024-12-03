@@ -1,7 +1,7 @@
 import { identity } from '@openenergytools/scl-lib';
 import { Tree } from '@openscd/oscd-tree-grid';
 
-function subDataObjectsObject(sdo: Element): Tree {
+function subDataObjectsObject(sdo: Element, sDiOrDai?: Element): Tree {
   const tree: Tree = {};
   const children: Tree = {};
 
@@ -12,12 +12,16 @@ function subDataObjectsObject(sdo: Element): Tree {
 
   Array.from(doType.querySelectorAll('SDO,DA')).forEach(sDoOrDa => {
     if (sDoOrDa.tagName === 'SDO') {
-      const sDoName = sDoOrDa.getAttribute('name') ?? 'UNKNOWN_SDO';
+      const name = sDoOrDa.getAttribute('name') ?? 'UNKNOWN_SDO';
+      const sdi = sDiOrDai?.querySelector(`SDI[name="${name}"]`) ?? undefined;
+      const desc = sdi?.getAttribute('desc');
+
+      const sDoName = `${name}${desc ? ` (${desc})` : ''}`;
       const id = `SDO: ${identity(sDoOrDa)}`;
-      children[id] = subDataObjectsObject(sDoOrDa);
+      children[id] = subDataObjectsObject(sDoOrDa, sdi);
       children[id]!.text = sDoName;
     } else {
-      const fc = sDoOrDa.getAttribute('fc') ?? 'UNKNOWN_DA';
+      const fc = sDoOrDa.getAttribute('fc') ?? 'UNKNOWN_FC';
       const id = `FC: ${fc}`;
       children[id] = {};
       children[id]!.text = id;
@@ -28,7 +32,7 @@ function subDataObjectsObject(sdo: Element): Tree {
   return tree;
 }
 
-function dataObjectObject(dO: Element): Tree {
+function dataObjectObject(dO: Element, dOI?: Element): Tree {
   const tree: Tree = {};
   const children: Tree = {};
 
@@ -39,10 +43,13 @@ function dataObjectObject(dO: Element): Tree {
 
   Array.from(doType.querySelectorAll('SDO,DA')).forEach(sDoOrDa => {
     if (sDoOrDa.tagName === 'SDO') {
-      const sDoName = sDoOrDa.getAttribute('name') ?? 'UNKNOWN_SDO';
+      const name = sDoOrDa.getAttribute('name') ?? 'UNKNOWN_SDO';
+      const sDi = dOI?.querySelector(`SDI[name="${name}"]`) ?? undefined;
+      const desc = sDi?.getAttribute('desc');
+      const sDoName = `${name}${desc ? ` (${desc})` : ''}`;
 
       const id = `SDO: ${identity(sDoOrDa)}`;
-      children[id] = subDataObjectsObject(sDoOrDa);
+      children[id] = subDataObjectsObject(sDoOrDa, sDi);
       children[id]!.text = sDoName;
     } else {
       const fc = sDoOrDa.getAttribute('fc') ?? 'UNKNOWN_DA';
@@ -66,10 +73,15 @@ function anyLnObject(anyLn: Element): Tree {
   if (!lnType) return tree;
 
   Array.from(lnType.querySelectorAll('DO')).forEach(dO => {
-    const doName = dO.getAttribute('name') ?? 'UNKNOWN_DO';
+    const name = dO.getAttribute('name') ?? 'UNKNOWN_DO';
+    const dOi =
+      anyLn.querySelector(`:scope > DOI[name="${name}"]`) ?? undefined;
+    const desc = dOi?.getAttribute('desc');
+
+    const doName = `${name}${desc ? ` (${desc})` : ''}`;
 
     const id = `DO: ${identity(dO)}`;
-    children[id] = dataObjectObject(dO);
+    children[id] = dataObjectObject(dO, dOi);
     children[id]!.text = doName;
   });
 
@@ -82,9 +94,11 @@ function lDeviceObject(lDevice: Element): Tree {
   const children: Tree = {};
 
   Array.from(lDevice.querySelectorAll('LN0,LN')).forEach(anyLn => {
+    const desc = anyLn.getAttribute('desc');
+
     const anyLnClass = `${anyLn.getAttribute('prefix') ?? ''} ${
       anyLn.getAttribute('lnClass') ?? 'UNKNOWN_INST'
-    } ${anyLn.getAttribute('inst') ?? ''}`;
+    } ${anyLn.getAttribute('inst') ?? ''}${desc ? ` (${desc})` : ''}`;
 
     const id = `${anyLn.tagName}: ${identity(anyLn)}`;
     children[id] = anyLnObject(anyLn);
@@ -100,7 +114,11 @@ export function dataObjectTree(server: Element): Tree {
   const tree: Tree = {};
 
   Array.from(server.querySelectorAll('LDevice')).forEach(lDevice => {
-    const lDeviceInst = lDevice.getAttribute('inst') ?? 'UNKNOWN_LDEVICE';
+    const desc = lDevice.getAttribute('desc');
+
+    const lDeviceInst = `${lDevice.getAttribute('inst') ?? 'UNKNOWN_LDEVICE'}${
+      desc ? ` (${desc})` : ''
+    }`;
 
     const id = `LDevice: ${identity(lDevice)}`;
     tree[id] = lDeviceObject(lDevice);
