@@ -1,16 +1,16 @@
+/* eslint-disable import/no-extraneous-dependencies */
 import { css, html, TemplateResult } from 'lit';
 import { customElement, query } from 'lit/decorators.js';
 
-import '@material/mwc-button';
-import type { Button } from '@material/mwc-button';
+import { MdOutlinedButton } from '@scopedelement/material-web/button/MdOutlinedButton.js';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { newEditEvent } from '@openscd/open-scd-core';
+import { newEditEvent } from '@openenergytools/open-scd-core';
 import { createGSEControl, removeControlBlock } from '@openenergytools/scl-lib';
 import {
   ActionItem,
   ActionList,
-} from '@openenergytools/filterable-lists/dist/action-list.js';
+} from '@openenergytools/filterable-lists/dist/ActionList.js';
 
 import './gse-control-element-editor.js';
 import type { GseControlElementEditor } from './gse-control-element-editor.js';
@@ -29,7 +29,7 @@ import BaseElementEditor from '../base-element-editor.js';
 export class GseControlEditor extends BaseElementEditor {
   @query('.selectionlist') selectionList!: ActionList;
 
-  @query('mwc-button') selectGSEControlButton!: Button;
+  @query('.change.scl.element') selectGSEControlButton!: MdOutlinedButton;
 
   @query('gse-control-element-editor')
   gseControlElementEditor!: GseControlElementEditor;
@@ -94,7 +94,11 @@ export class GseControlEditor extends BaseElementEditor {
               callback: () => {
                 const insertGseControl = createGSEControl(ied);
                 if (insertGseControl)
-                  this.dispatchEvent(newEditEvent(insertGseControl));
+                  this.dispatchEvent(
+                    newEditEvent(insertGseControl, {
+                      title: 'Create New GSEControl',
+                    })
+                  );
               },
             },
           ],
@@ -126,7 +130,9 @@ export class GseControlEditor extends BaseElementEditor {
               icon: 'delete',
               callback: () => {
                 this.dispatchEvent(
-                  newEditEvent(removeControlBlock({ node: gseControl }))
+                  newEditEvent(removeControlBlock({ node: gseControl }), {
+                    title: 'Remove GSEControl',
+                  })
                 );
 
                 this.selectCtrlBlock = undefined;
@@ -148,15 +154,14 @@ export class GseControlEditor extends BaseElementEditor {
   }
 
   private renderToggleButton(): TemplateResult {
-    return html`<mwc-button
+    return html`<md-outlined-button
       class="change scl element"
-      outlined
-      label="Selected GOOSE"
       @click=${() => {
         this.selectionList.classList.remove('hidden');
         this.selectGSEControlButton.classList.add('hidden');
       }}
-    ></mwc-button>`;
+      >Selected GOOSE</md-outlined-button
+    >`;
   }
 
   render(): TemplateResult {
@@ -180,14 +185,11 @@ export class GseControlEditor extends BaseElementEditor {
       grid-gap: 12px;
       padding: 8px 12px 16px;
       grid-template-columns: repeat(3, 1fr);
+      z-index: 0;
     }
     .content.dataSet {
       display: flex;
       flex-direction: column;
-    }
-
-    .selectionlist {
-      z-index: 2;
     }
 
     data-set-element-editor {
@@ -202,7 +204,7 @@ export class GseControlEditor extends BaseElementEditor {
       --mdc-list-item-meta-size: 48px;
     }
 
-    mwc-icon-button[icon='playlist_add'] {
+    md-icon-button[icon='playlist_add'] {
       pointer-events: all;
     }
 

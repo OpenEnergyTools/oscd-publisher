@@ -6,6 +6,7 @@ import { SinonSpy, spy } from 'sinon';
 
 import { SclSelect } from '@openenergytools/scl-select';
 import { SclTextField } from '@openenergytools/scl-text-field';
+import { SclCheckbox } from '@openenergytools/scl-checkbox';
 
 import { isUpdate } from '@openenergytools/scl-lib/dist/foundation/utils.js';
 
@@ -13,6 +14,10 @@ import { smvControlDoc } from './smvControl.testfiles.js';
 
 import './sampled-value-control-element-editor.js';
 import type { SampledValueControlElementEditor } from './sampled-value-control-element-editor.js';
+
+window.customElements.define('scl-text-field', SclTextField);
+window.customElements.define('scl-select', SclSelect);
+window.customElements.define('scl-checkbox', SclCheckbox);
 
 describe('SampledValueControl element editor component', () => {
   let editor: SampledValueControlElementEditor;
@@ -30,7 +35,7 @@ describe('SampledValueControl element editor component', () => {
     );
 
     editEvent = spy();
-    window.addEventListener('oscd-edit', editEvent);
+    window.addEventListener('oscd-edit-v2', editEvent);
   });
 
   it('allows to change the SampledValueControl elements attributes', async () => {
@@ -54,9 +59,9 @@ describe('SampledValueControl element editor component', () => {
     editor.smvControlSave.click();
 
     expect(editEvent).to.be.calledOnce;
-    expect(editEvent.args[0][0].detail.length).to.equal(2);
+    expect(editEvent.args[0][0].detail.edit.length).to.equal(2);
 
-    const update = editEvent.args[0][0].detail[0];
+    const update = editEvent.args[0][0].detail.edit[0];
     expect(update.element).to.equal(smvControl);
     expect(update.attributes).to.deep.equal({
       name: 'SomeNewName',
@@ -83,7 +88,7 @@ describe('SampledValueControl element editor component', () => {
     editor.smvSave.click();
 
     expect(editEvent).to.be.calledOnce;
-    expect(editEvent.args[0][0].detail.length).to.equal(2);
+    expect(editEvent.args[0][0].detail.edit.length).to.equal(2);
   });
 
   it('allows to change the SmvOpts element child element', async () => {
@@ -105,9 +110,11 @@ describe('SampledValueControl element editor component', () => {
     editor.smvOptsSave.click();
 
     expect(editEvent).to.be.calledOnce;
-    expect(editEvent.args[0][0].detail).to.satisfy(isUpdate);
-    expect(editEvent.args[0][0].detail.element.tagName).to.equal('SmvOpts');
-    expect(editEvent.args[0][0].detail.attributes).to.deep.equal({
+    expect(editEvent.args[0][0].detail.edit).to.satisfy(isUpdate);
+    expect(editEvent.args[0][0].detail.edit.element.tagName).to.equal(
+      'SmvOpts'
+    );
+    expect(editEvent.args[0][0].detail.edit.attributes).to.deep.equal({
       refreshTime: null,
       sampleSynchronized: 'false',
       sampleRate: null,

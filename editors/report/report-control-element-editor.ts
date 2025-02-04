@@ -9,10 +9,9 @@ import {
   state,
 } from 'lit/decorators.js';
 
-import '@material/mwc-button';
-import type { Button } from '@material/mwc-button';
+import { MdTextButton } from '@scopedelement/material-web/button/MdTextButton.js';
 
-import { newEditEvent } from '@openscd/open-scd-core';
+import { newEditEvent } from '@openenergytools/open-scd-core';
 import {
   getReference,
   identity,
@@ -96,17 +95,17 @@ export class ReportControlElementEditor extends LitElement {
   @queryAll('.content.optfields > scl-checkbox')
   optFieldsInputs!: SclCheckbox[];
 
-  @query('.save.optfields') optFieldsSave!: Button;
+  @query('.save.optfields') optFieldsSave!: MdTextButton;
 
   @queryAll('.content.trgops > scl-checkbox')
   trgOpsInputs!: SclCheckbox[];
 
-  @query('.save.trgops') trgOpsSave!: Button;
+  @query('.save.trgops') trgOpsSave!: MdTextButton;
 
   @queryAll('.report.attributes')
   reportControlInputs!: (SclTextField | SclSelect | SclCheckbox)[];
 
-  @query('.content.reportcontrol > .save') reportControlSave!: Button;
+  @query('.content.reportcontrol > .save') reportControlSave!: MdTextButton;
 
   @query('.rptenabled.attributes') rptEnabledInput!: SclTextField;
 
@@ -151,15 +150,22 @@ export class ReportControlElementEditor extends LitElement {
         optFieldAttrs
       );
       this.dispatchEvent(
-        newEditEvent({
-          parent: this.element,
-          node,
-          reference: getReference(this.element, 'OptFields'),
-        })
+        newEditEvent(
+          {
+            parent: this.element,
+            node,
+            reference: getReference(this.element, 'OptFields'),
+          },
+          { title: `Update ReportControl OptFields ${this.element}` }
+        )
       );
     } else {
       const updateEdit = { element: optFields!, attributes: optFieldAttrs };
-      this.dispatchEvent(newEditEvent(updateEdit));
+      this.dispatchEvent(
+        newEditEvent(updateEdit, {
+          title: `Update ReportControl OptFields ${this.element}`,
+        })
+      );
     }
 
     this.onOptFieldsInputChange();
@@ -198,15 +204,22 @@ export class ReportControlElementEditor extends LitElement {
         trgOpsAttrs
       );
       this.dispatchEvent(
-        newEditEvent({
-          parent: this.element,
-          node,
-          reference: getReference(this.element, 'TrgOps'),
-        })
+        newEditEvent(
+          {
+            parent: this.element,
+            node,
+            reference: getReference(this.element, 'TrgOps'),
+          },
+          { title: `Update ReportControl Triggers ${this.element}` }
+        )
       );
     } else {
       const updateEdit = { element: trgOps!, attributes: trgOpsAttrs };
-      this.dispatchEvent(newEditEvent(updateEdit));
+      this.dispatchEvent(
+        newEditEvent(updateEdit, {
+          title: `Update ReportControl Triggers ${this.element}`,
+        })
+      );
     }
 
     this.onTrgOpsInputChange();
@@ -258,10 +271,16 @@ export class ReportControlElementEditor extends LitElement {
     const rptEnabledAction = updateMaxClients(reportControl!, max);
 
     if (!rptEnabledAction)
-      this.dispatchEvent(newEditEvent(reportControlActions));
+      this.dispatchEvent(
+        newEditEvent(reportControlActions, {
+          title: `Update ReportControl ${this.element}`,
+        })
+      );
     else
       this.dispatchEvent(
-        newEditEvent([...reportControlActions, rptEnabledAction])
+        newEditEvent([...reportControlActions, rptEnabledAction], {
+          title: `Update ReportControl ${this.element}`,
+        })
       );
 
     this.resetInputs();
@@ -315,13 +334,12 @@ export class ReportControlElementEditor extends LitElement {
             ></scl-checkbox>`
         )}
       </div>
-      <mwc-button
+      <md-text-button
         class="save optfields"
-        label="save"
-        icon="save"
         ?disabled=${!this.optFieldsDiff}
         @click=${() => this.saveOptFieldChanges()}
-      ></mwc-button>`;
+        >Save<md-icon slot="icon">save</md-icon></md-text-button
+      >`;
   }
 
   private renderTrgOpsContent(): TemplateResult {
@@ -351,13 +369,12 @@ export class ReportControlElementEditor extends LitElement {
             ></scl-checkbox>`
         )}
       </div>
-      <mwc-button
+      <md-text-button
         class="save trgops"
-        label="save"
-        icon="save"
         ?disabled=${!this.trgOpsDiff}
         @click=${() => this.saveTrgOpsChanges()}
-      ></mwc-button>`;
+        >Save<md-icon slot="icon">save</md-icon></md-text-button
+      >`;
   }
 
   private renderChildElements(): TemplateResult {
@@ -467,13 +484,12 @@ export class ReportControlElementEditor extends LitElement {
         suffix="ms"
         @input=${this.onReportControlInputChange}
       ></scl-text-field>
-      <mwc-button
+      <md-text-button
         class="save"
-        label="save"
-        icon="save"
         ?disabled=${!this.reportControlDiff}
         @click=${() => this.saveReportControlChanges()}
-      ></mwc-button>
+        >Save<md-icon slot="icon">save</md-icon></md-text-button
+      >
     </div>`;
   }
 

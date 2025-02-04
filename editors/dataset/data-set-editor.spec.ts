@@ -6,6 +6,10 @@ import { sendMouse } from '@web/test-runner-commands';
 
 import { SinonSpy, spy } from 'sinon';
 
+import { SclTextField } from '@openenergytools/scl-text-field';
+import { MdIconButton } from '@scopedelement/material-web/iconbutton/MdIconButton.js';
+import { MdIcon } from '@scopedelement/material-web/icon/MdIcon.js';
+
 import {
   isInsert,
   isRemove,
@@ -14,6 +18,10 @@ import {
 import { dataSetDoc } from './data-set-editor.testfiles.js';
 
 import './data-set-editor.js';
+
+window.customElements.define('scl-text-field', SclTextField);
+window.customElements.define('md-icon-button', MdIconButton);
+window.customElements.define('md-icon', MdIcon);
 
 const doc = new DOMParser().parseFromString(dataSetDoc, 'application/xml');
 
@@ -24,7 +32,7 @@ describe('DataSet editor component', () => {
     await fixture(html`<data-set-editor .doc="${doc}"></data-set-editor>`);
 
     editEvent = spy();
-    window.addEventListener('oscd-edit', editEvent);
+    window.addEventListener('oscd-edit-v2', editEvent);
   });
 
   it('allows to add a new empty DataSet element', async () => {
@@ -32,7 +40,7 @@ describe('DataSet editor component', () => {
 
     expect(editEvent).to.have.been.calledOnce;
 
-    const insert = editEvent.args[0][0].detail;
+    const insert = editEvent.args[0][0].detail.edit;
 
     expect(insert).to.satisfy(isInsert);
     expect(insert.parent.tagName).to.equal('LN0');
@@ -45,7 +53,9 @@ describe('DataSet editor component', () => {
     await sendMouse({ type: 'click', position: [760, 200] });
 
     expect(editEvent).to.have.been.calledOnce;
-    expect(editEvent.args[0][0].detail[0]).to.satisfy(isRemove);
-    expect(editEvent.args[0][0].detail[0].node.tagName).to.equal('DataSet');
+    expect(editEvent.args[0][0].detail.edit[0]).to.satisfy(isRemove);
+    expect(editEvent.args[0][0].detail.edit[0].node.tagName).to.equal(
+      'DataSet'
+    );
   });
 });

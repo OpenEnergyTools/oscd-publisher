@@ -1,14 +1,37 @@
+/* eslint-disable import/no-extraneous-dependencies */
 import { css, html, LitElement } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
 import '@material/mwc-radio';
-import '@material/mwc-formfield';
+import '@scopedelement/material-web/radio/radio.js';
+
+import { MdIcon } from '@scopedelement/material-web/icon/MdIcon.js';
+import { MdIconButton } from '@scopedelement/material-web/iconbutton/MdIconButton.js';
+import { SclTextField } from '@openenergytools/scl-text-field';
+import { SclSelect } from '@openenergytools/scl-select';
+import { MdDialog } from '@scopedelement/material-web/dialog/MdDialog.js';
+import { MdOutlinedButton } from '@scopedelement/material-web/button/MdOutlinedButton.js';
+import { MdTextButton } from '@scopedelement/material-web/button/MdTextButton.js';
+import { SclCheckbox } from '@openenergytools/scl-checkbox';
+import { MdCheckbox } from '@scopedelement/material-web/checkbox/MdCheckbox.js';
+import { TreeGrid } from '@openenergytools/tree-grid';
 
 import './editors/report/report-control-editor.js';
 import './editors/gsecontrol/gse-control-editor.js';
 import './editors/dataset/data-set-editor.js';
 import './editors/sampledvalue/sampled-value-control-editor.js';
+
+window.customElements.define('md-dialog', MdDialog);
+window.customElements.define('md-outlined-button', MdOutlinedButton);
+window.customElements.define('md-text-button', MdTextButton);
+window.customElements.define('scl-text-field', SclTextField);
+window.customElements.define('md-icon-button', MdIconButton);
+window.customElements.define('md-icon', MdIcon);
+window.customElements.define('scl-select', SclSelect);
+window.customElements.define('scl-checkbox', SclCheckbox);
+window.customElements.define('md-checkbox', MdCheckbox);
+window.customElements.define('oscd-tree-grid', TreeGrid);
 
 /** An editor [[`plugin`]] to configure `Report`, `GOOSE`, `SampledValue` control blocks and its `DataSet` */
 export default class PublisherPlugin extends LitElement {
@@ -25,43 +48,52 @@ export default class PublisherPlugin extends LitElement {
     'GOOSE';
 
   render() {
-    return html`<div class="publishertypeselector">
-        <mwc-formfield label="Report"
-          ><mwc-radio
-            value="Report"
+    return html`<form class="publishertypeselector">
+        <span>
+          <md-radio
+            id="report-radio"
+            value="report"
             ?checked=${this.publisherType === 'Report'}
-            eslint-disable-next-line
-            no-return-assign
-            @checked=${() => {
+            @change=${() => {
               this.publisherType = 'Report';
             }}
-          ></mwc-radio></mwc-formfield
-        ><mwc-formfield label="GOOSE"
-          ><mwc-radio
-            value="GOOSE"
+          ></md-radio>
+          <label for="report-radio">Report</label>
+        </span>
+        <span>
+          <md-radio
+            id="goose-radio"
+            value="goose"
             ?checked=${this.publisherType === 'GOOSE'}
-            @checked=${() => {
+            @change=${() => {
               this.publisherType = 'GOOSE';
             }}
-          ></mwc-radio></mwc-formfield
-        ><mwc-formfield label="SampledValue"
-          ><mwc-radio
-            value="SampledValue"
+          ></md-radio>
+          <label for="goose-radio">GOOSE</label>
+        </span>
+        <span>
+          <md-radio
+            id="smv-radio"
+            value="smv"
             ?checked=${this.publisherType === 'SampledValue'}
-            @checked=${() => {
+            @change=${() => {
               this.publisherType = 'SampledValue';
             }}
-          ></mwc-radio></mwc-formfield
-        ><mwc-formfield label="DataSet"
-          ><mwc-radio
-            value="DataSet"
+          ></md-radio>
+          <label for="smv-radio">SampledValue</label>
+        </span>
+        <span>
+          <md-radio
+            id="ds-radio"
+            value="ds"
             ?checked=${this.publisherType === 'DataSet'}
-            @checked=${() => {
+            @change=${() => {
               this.publisherType = 'DataSet';
             }}
-          ></mwc-radio
-        ></mwc-formfield>
-      </div>
+          ></md-radio>
+          <label for="ds-radio">DataSet</label>
+        </span>
+      </form>
       <report-control-editor
         .doc=${this.doc}
         editCount="${this.editCount}"
@@ -106,6 +138,11 @@ export default class PublisherPlugin extends LitElement {
       --md-menu-container-color: var(--oscd-base3);
       font-family: var(--oscd-theme-text-font);
       --md-sys-color-surface-container-highest: var(--oscd-base2);
+      --md-dialog-container-color: var(--oscd-base3);
+
+      --md-list-item-activated-background: rgb(
+        from var(--oscd-primary) r g b / 0.38
+      );
     }
 
     .hidden {
@@ -114,9 +151,15 @@ export default class PublisherPlugin extends LitElement {
 
     .publishertypeselector {
       margin: 4px 8px 8px;
-      background-color: var(--mdc-theme-surface);
-      width: calc(100% - 16px);
-      justify-content: space-around;
+      padding: 8px;
+      background-color: var(--oscd-theme-surface);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, auto));
+      gap: 5px;
+    }
+
+    .publishertypeselector > span > label {
+      margin-left: 10px;
     }
   `;
 }

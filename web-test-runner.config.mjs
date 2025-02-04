@@ -2,6 +2,8 @@
 import { visualRegressionPlugin } from '@web/test-runner-visual-regression/plugin';
 import { playwrightLauncher } from '@web/test-runner-playwright';
 
+import {polyfill} from '@web/dev-server-polyfill';
+
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 
@@ -19,9 +21,10 @@ const filteredLogs = [
   'mwc-list-item scheduled an update',
 ];
 
+
 const browsers = [
      playwrightLauncher({ product: 'chromium' }),
-   ];
+   ]; 
 
 function defaultGetImageDiff({ baselineImage, image, options }) {
   let error = '';
@@ -58,6 +61,9 @@ function defaultGetImageDiff({ baselineImage, image, options }) {
 
 export default /** @type {import("@web/test-runner").TestRunnerConfig} */ ({
   plugins: [
+    polyfill({
+          scopedCustomElementRegistry: true,
+        }),
     visualRegressionPlugin({
       update: process.argv.includes('--update-visual-baseline'),
       getImageDiff: (options) => {
@@ -90,8 +96,22 @@ export default /** @type {import("@web/test-runner").TestRunnerConfig} */ ({
             animation: none !important;
             }
             </style>
+           
+            <script>
+              const _customElementsDefine = window.customElements.define;
+              window.customElements.define = (name, cl, conf) => {
+                if (!customElements.get(name)) {
+                  try {
+                    _customElementsDefine.call(window.customElements, name, cl, conf);
+                  } catch (e) {
+                    console.warn(e);
+                  }
+                }
+              };
+            </script>
             <script>window.process = { env: ${JSON.stringify(process.env)} }</script>
             <script type="module" src="${testFramework}"></script>
+            
             <script>
             function descendants(parent) {
               return (Array.from(parent.childNodes)).concat(

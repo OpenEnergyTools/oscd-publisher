@@ -1,13 +1,11 @@
 import { LitElement, TemplateResult, html } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 
-import '@material/mwc-dialog';
-import '@material/mwc-icon-button';
-import type { Dialog } from '@material/mwc-dialog';
-import type { IconButton } from '@material/mwc-icon-button';
+// import '@scopedelement/material-web/iconbutton/icon-button.js';
+import { MdDialog } from '@scopedelement/material-web/dialog/MdDialog.js';
+import type { MdIconButton } from '@scopedelement/material-web/iconbutton/MdIconButton.js';
 
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { newEditEvent } from '@openscd/open-scd-core';
+import { newEditEvent } from '@openenergytools/open-scd-core';
 import {
   createDataSet,
   findControlBlockSubscription,
@@ -32,21 +30,24 @@ export default class BaseElementEditor extends LitElement {
   @state()
   selectedDataSet?: Element | null;
 
-  @query('mwc-dialog') selectDataSetDialog!: Dialog;
+  @query('.dialog.select') selectDataSetDialog!: MdDialog;
 
-  @query('.new.dataset') newDataSet!: IconButton;
+  @query('.new.dataset') newDataSet!: MdIconButton;
 
-  @query('.change.dataset') changeDataSet!: IconButton;
+  @query('.change.dataset') changeDataSet!: MdIconButton;
 
   protected selectDataSet(dataSet: Element): void {
     const name = dataSet.getAttribute('name');
     if (!name || !this.selectCtrlBlock) return;
 
     this.dispatchEvent(
-      newEditEvent({
-        element: this.selectCtrlBlock,
-        attributes: { datSet: name },
-      })
+      newEditEvent(
+        {
+          element: this.selectCtrlBlock,
+          attributes: { datSet: name },
+        },
+        { title: `Change Data Set of ${identity(this.selectCtrlBlock)}` }
+      )
     );
     this.selectedDataSet = dataSet;
 
@@ -65,11 +66,17 @@ export default class BaseElementEditor extends LitElement {
 
     const update = { element: control, attributes: { datSet: newName } };
 
-    this.dispatchEvent(newEditEvent([insert, update]));
+    this.dispatchEvent(
+      newEditEvent([insert, update], { title: 'Add New Data Set' })
+    );
 
     this.selectedDataSet = this.selectCtrlBlock?.parentElement?.querySelector(
       `:scope > DataSet[name="${this.selectCtrlBlock.getAttribute('datSet')}"]`
     );
+  }
+
+  private showSelectDataSetDialog(): void {
+    this.selectDataSetDialog.show();
   }
 
   protected renderSelectDataSetDialog(): TemplateResult {
@@ -85,9 +92,9 @@ export default class BaseElementEditor extends LitElement {
       },
     }));
 
-    return html`<mwc-dialog>
-      <action-list .items=${items} filterable></action-list>
-    </mwc-dialog>`;
+    return html`<md-dialog class="dialog select">
+      <action-list slot="content" .items=${items} filterable></action-list>
+    </md-dialog>`;
   }
 
   protected renderDataSetElementContainer(): TemplateResult {
@@ -99,24 +106,24 @@ export default class BaseElementEditor extends LitElement {
           .showHeader=${false}
           editCount="${this.editCount}"
         >
-          <mwc-icon-button
+          <md-icon-button
             class="change dataset"
             slot="change"
-            icon="swap_vert"
             ?disabled=${!!findControlBlockSubscription(this.selectCtrlBlock!)
               .length}
-            @click=${() => this.selectDataSetDialog.show()}
-          ></mwc-icon-button>
-          <mwc-icon-button
+            @click=${this.showSelectDataSetDialog}
+            ><md-icon>swap_vert</md-icon></md-icon-button
+          >
+          <md-icon-button
             class="new dataset"
             slot="new"
-            icon="playlist_add"
             ?disabled=${!!this.selectCtrlBlock!.getAttribute('datSet')}
             @click="${() => {
               this.addNewDataSet(this.selectCtrlBlock!);
             }}"
-          ></mwc-icon-button
-        ></data-set-element-editor>
+            ><md-icon>playlist_add</md-icon></md-icon-button
+          ></data-set-element-editor
+        >
       </div>
     `;
   }

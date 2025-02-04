@@ -8,14 +8,12 @@ import {
   state,
 } from 'lit/decorators.js';
 
-import '@material/mwc-button';
-import '@material/mwc-dialog';
-import type { Button } from '@material/mwc-button';
-import type { Dialog } from '@material/mwc-dialog';
+import { MdDialog } from '@scopedelement/material-web/dialog/MdDialog.js';
+import { MdTextButton } from '@scopedelement/material-web/button/MdTextButton.js';
+// import '@scopedelement/material-web/icon/icon.js'
 
-import '@openscd/oscd-tree-grid';
-import { newEditEvent } from '@openscd/open-scd-core';
-import type { TreeGrid } from '@openscd/oscd-tree-grid';
+import { newEditEvent } from '@openenergytools/open-scd-core';
+import type { TreeGrid } from '@openenergytools/tree-grid';
 import {
   canAddFCDA,
   find,
@@ -30,7 +28,7 @@ import '@openenergytools/scl-text-field';
 import type {
   ActionItem,
   ActionList,
-} from '@openenergytools/filterable-lists/dist/action-list.js';
+} from '@openenergytools/filterable-lists/dist/ActionList.js';
 // eslint-disable-next-line import/no-duplicates
 import { SclTextField } from '@openenergytools/scl-text-field';
 
@@ -119,21 +117,25 @@ export class DataSetElementEditor extends LitElement {
 
   @queryAll('scl-text-field') inputs!: SclTextField[];
 
-  @query('mwc-button.save') saveButton!: Button;
+  @query('.dataset.save') saveButton!: MdTextButton;
 
   @query('.list.fcda') fcdaList!: ActionList;
 
-  @query('#dapickerbutton') daPickerButton!: Button;
+  @query('#dapickerbutton') daPickerButton!: MdTextButton;
 
-  @query('#dapicker') daPickerDialog!: Dialog;
+  @query('#dapicker') daPickerDialog!: MdDialog;
 
   @query('#dapicker > oscd-tree-grid') daPicker!: TreeGrid;
 
-  @query('#dopickerbutton') doPickerButton!: Button;
+  @query('.da.picker.save') daPickerSaveButton!: MdTextButton;
 
-  @query('#dopicker') doPickerDialog!: Dialog;
+  @query('#dopickerbutton') doPickerButton!: MdTextButton;
+
+  @query('#dopicker') doPickerDialog!: MdDialog;
 
   @query('#dopicker > oscd-tree-grid') doPicker!: TreeGrid;
+
+  @query('.do.picker.save') doPickerSaveButton!: MdTextButton;
 
   public resetInputs(): void {
     this.element = null; // removes inputs and forces a re-render
@@ -146,6 +148,8 @@ export class DataSetElementEditor extends LitElement {
   }
 
   private onInputChange(): void {
+    if (!this.element) return;
+
     this.someDiffOnInputs = Array.from(this.inputs ?? []).some(
       input => this.element?.getAttribute(input.label) !== input.value
     );
@@ -160,7 +164,9 @@ export class DataSetElementEditor extends LitElement {
         attributes[input.label] = input.value;
 
     this.dispatchEvent(
-      newEditEvent(updateDataSet({ element: this.element, attributes }))
+      newEditEvent(updateDataSet({ element: this.element, attributes }), {
+        title: `Update DataSet ${identity(this.element)}`,
+      })
     );
 
     this.resetInputs();
@@ -176,7 +182,11 @@ export class DataSetElementEditor extends LitElement {
       functionalConstraintPaths(this.element!.ownerDocument, paths)
     );
 
-    this.dispatchEvent(newEditEvent(actions));
+    this.dispatchEvent(
+      newEditEvent(actions, {
+        title: `Add Data Object to DataSet ${identity(this.element)}`,
+      })
+    );
     this.doPickerDialog.close();
   }
 
@@ -188,7 +198,11 @@ export class DataSetElementEditor extends LitElement {
       dataAttributePaths(this.element!.ownerDocument, paths)
     );
 
-    this.dispatchEvent(newEditEvent(actions));
+    this.dispatchEvent(
+      newEditEvent(actions, {
+        title: `Add Data Attributes to DataSet ${identity(this.element)}`,
+      })
+    );
     this.daPickerDialog.close();
   }
 
@@ -200,7 +214,9 @@ export class DataSetElementEditor extends LitElement {
       reference: fcda.previousElementSibling,
     };
 
-    this.dispatchEvent(newEditEvent([remove, insert]));
+    this.dispatchEvent(
+      newEditEvent([remove, insert], { title: 'Change FCDA order' })
+    );
   }
 
   private onMoveFCDADown(fcda: Element): void {
@@ -211,7 +227,9 @@ export class DataSetElementEditor extends LitElement {
       reference: fcda.nextElementSibling?.nextElementSibling,
     };
 
-    this.dispatchEvent(newEditEvent([remove, insert]));
+    this.dispatchEvent(
+      newEditEvent([remove, insert], { title: 'Change FCDA order' })
+    );
   }
 
   private renderFCDAList(): TemplateResult {
@@ -233,7 +251,9 @@ export class DataSetElementEditor extends LitElement {
           icon: 'delete',
           label: '',
           callback: () => {
-            this.dispatchEvent(newEditEvent(removeFCDA({ node: fcda })));
+            this.dispatchEvent(
+              newEditEvent(removeFCDA({ node: fcda }), { title: 'Remove FCDA' })
+            );
           },
         },
       ];
@@ -273,53 +293,54 @@ export class DataSetElementEditor extends LitElement {
   private renderDataObjectPicker(): TemplateResult {
     const server = this.element?.closest('Server')!;
 
-    return html` <mwc-button
+    return html` <md-text-button
         id="doPickerButton"
-        label="Add data object"
         icon="playlist_add"
         ?disabled=${!canAddFCDA(this.element!)}
         @click=${() => this.doPickerDialog?.show()}
-      ></mwc-button
-      ><mwc-dialog id="dopicker" heading="Add Data Objects">
-        <oscd-tree-grid .tree=${dataObjectTree(server)}></oscd-tree-grid>
-        <mwc-button
-          slot="secondaryAction"
-          label="close"
-          @click=${() => this.doPickerDialog?.close()}
-        ></mwc-button>
-        <mwc-button
-          slot="primaryAction"
-          label="save"
-          icon="save"
-          @click=${this.saveDataObjects}
-        ></mwc-button>
-      </mwc-dialog>`;
+      >Add data object<md-icon slot="icon">playlist_add</me-icon></md-text-button
+      ><md-dialog id="dopicker">
+        <div slot="headline">Add Data Objects</div>
+        <oscd-tree-grid slot="content" .tree=${dataObjectTree(
+          server
+        )}></oscd-tree-grid>
+        <div slot="actions">
+          <md-text-button
+            @click=${() => this.doPickerDialog?.close()}
+          >Close</md-text-button>
+          <md-text-button 
+            class="do picker save"
+            @click=${this.saveDataObjects}
+          >Save<md-icon slot="icon">save</md-icon></md-text-button>
+        </div>
+      </md-dialog>`;
   }
 
   private renderDataAttributePicker(): TemplateResult {
     const server = this.element?.closest('Server')!;
 
-    return html` <mwc-button
+    return html` <md-text-button
         id="daPickerButton"
-        label="Add data attribute"
         icon="playlist_add"
         ?disabled=${!canAddFCDA(this.element!)}
         @click=${() => this.daPickerDialog.show()}
-      ></mwc-button
-      ><mwc-dialog id="dapicker" heading="Add Data Attributes"
-        ><oscd-tree-grid .tree="${dataAttributeTree(server)}"></oscd-tree-grid>
-        <mwc-button
-          slot="secondaryAction"
-          label="close"
-          @click=${() => this.daPickerDialog?.close()}
-        ></mwc-button>
-        <mwc-button
-          slot="primaryAction"
-          label="save"
-          icon="save"
-          @click=${this.saveDataAttributes}
-        ></mwc-button>
-      </mwc-dialog>`;
+      >Add data attribute<md-icon slot="icon">playlist_add</me-icon></md-text-button
+      ><md-dialog id="dapicker">
+        <div slot="headline">Add Data Attributes</div>
+        <oscd-tree-grid slot="content" .tree="${dataAttributeTree(
+          server
+        )}"></oscd-tree-grid>
+        <div slot="actions">
+          <md-text-button @click=${() =>
+            this.daPickerDialog?.close()}>Close</md-text-button>
+          <md-text-button class="da picker save" @click=${
+            this.saveDataAttributes
+          } >
+            Save
+            <md-icon slot="icon">Save</md-icon>
+          </md-text-button>
+        </div>
+      </md-dialog>`;
   }
 
   private renderDataPickers(): TemplateResult {
@@ -339,7 +360,7 @@ export class DataSetElementEditor extends LitElement {
     return html`<h3
       style="display: flex; flex-direction:row;align-self: center;"
     >
-      Entries: <mwc-icon>${loadIcon(is / max)}</mwc-icon> ${is}/${max}
+      Entries: <md-icon>${loadIcon(is / max)}</md-icon> ${is}/${max}
     </h3>`;
   }
 
@@ -363,13 +384,12 @@ export class DataSetElementEditor extends LitElement {
         @input=${() => this.onInputChange()}
       >
       </scl-text-field>
-      <mwc-button
-        class="save"
-        label="save"
-        icon="save"
+      <md-text-button
+        class="dataset save"
         ?disabled=${!this.someDiffOnInputs}
         @click=${() => this.saveChanges()}
-      ></mwc-button>
+        >Save<md-icon slot="icon">save</md-icon></md-text-button
+      >
       <hr color="lightgrey" />`;
   }
 
@@ -436,19 +456,16 @@ export class DataSetElementEditor extends LitElement {
       text-overflow: ellipsis;
     }
 
-    mwc-dialog {
-      --mdc-dialog-max-width: 92vw;
-    }
-
-    action-list {
-      z-index: 0;
+    md-dialog {
+      min-width: 80%;
+      min-height: 80%;
     }
 
     *[iconTrailing='search'] {
       --mdc-shape-small: 28px;
     }
 
-    ::slotted(mwc-icon-button[disabled]) {
+    ::slotted(md-icon-button[disabled]) {
       display: none;
     }
   `;

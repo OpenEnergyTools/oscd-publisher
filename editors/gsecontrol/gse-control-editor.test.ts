@@ -7,6 +7,7 @@ import { visualDiff } from '@web/test-runner-visual-regression';
 
 import { gseControlDoc, otherGseControlDoc } from './gseControl.testfiles.js';
 
+import '../../oscd-publisher.js'; // for loading of components only
 import './gse-control-editor.js';
 import type { GseControlEditor } from './gse-control-editor.js';
 
@@ -180,7 +181,7 @@ describe('GSEControl editor component', () => {
     describe('with unreferenced DataSet', () => {
       beforeEach(async () => {
         await setViewport({ width: 1200, height: 800 });
-        await sendMouse({ type: 'click', position: [150, 300] });
+        await sendMouse({ type: 'click', position: [150, 340] });
         await timeout(200);
       });
 

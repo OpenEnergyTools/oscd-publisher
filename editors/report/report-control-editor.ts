@@ -2,11 +2,10 @@
 import { css, html, TemplateResult } from 'lit';
 import { customElement, query } from 'lit/decorators.js';
 
-import '@material/mwc-button';
-import type { Button } from '@material/mwc-button';
+import { MdOutlinedButton } from '@scopedelement/material-web/button/MdOutlinedButton.js';
 
 import '@openenergytools/filterable-lists/dist/action-list.js';
-import { newEditEvent } from '@openscd/open-scd-core';
+import { newEditEvent } from '@openenergytools/open-scd-core';
 import {
   createReportControl,
   identity,
@@ -15,7 +14,7 @@ import {
 import type {
   ActionItem,
   ActionList,
-} from '@openenergytools/filterable-lists/dist/action-list.js';
+} from '@openenergytools/filterable-lists/dist/ActionList.js';
 
 import './report-control-element-editor.js';
 import '../dataset/data-set-element-editor.js';
@@ -33,7 +32,7 @@ import BaseElementEditor from '../base-element-editor.js';
 export class ReportControlEditor extends BaseElementEditor {
   @query('.selectionlist') selectionList!: ActionList;
 
-  @query('mwc-button') selectReportControlButton!: Button;
+  @query('.change.scl.element') selectReportControlButton!: MdOutlinedButton;
 
   @query('report-control-element-editor')
   rpControlElementEditor!: ReportControlElementEditor;
@@ -100,7 +99,11 @@ export class ReportControlEditor extends BaseElementEditor {
               callback: () => {
                 const insertGseControl = createReportControl(ied);
                 if (insertGseControl)
-                  this.dispatchEvent(newEditEvent(insertGseControl));
+                  this.dispatchEvent(
+                    newEditEvent(insertGseControl, {
+                      title: 'Create New ReportControl',
+                    })
+                  );
               },
             },
           ],
@@ -132,7 +135,9 @@ export class ReportControlEditor extends BaseElementEditor {
               icon: 'delete',
               callback: () => {
                 this.dispatchEvent(
-                  newEditEvent(removeControlBlock({ node: rpControl }))
+                  newEditEvent(removeControlBlock({ node: rpControl }), {
+                    title: `Remove ReportControl ${rpControl}`,
+                  })
                 );
 
                 this.selectCtrlBlock = undefined;
@@ -154,15 +159,14 @@ export class ReportControlEditor extends BaseElementEditor {
   }
 
   private renderToggleButton(): TemplateResult {
-    return html`<mwc-button
+    return html`<md-outlined-button
       class="change scl element"
-      outlined
-      label="Select Report"
       @click=${() => {
         this.selectionList.classList.remove('hidden');
         this.selectReportControlButton.classList.add('hidden');
       }}
-    ></mwc-button>`;
+      >Select Report</md-outlined-button
+    >`;
   }
 
   render(): TemplateResult {
@@ -186,6 +190,7 @@ export class ReportControlEditor extends BaseElementEditor {
       grid-gap: 12px;
       padding: 8px 12px 16px;
       grid-template-columns: repeat(3, 1fr);
+      z-index: 0;
     }
 
     .content.dataSet {
@@ -193,15 +198,11 @@ export class ReportControlEditor extends BaseElementEditor {
       flex-direction: column;
     }
 
-    .selectionlist {
-      z-index: 2;
-    }
-
     mwc-list-item {
       --mdc-list-item-meta-size: 48px;
     }
 
-    mwc-icon-button[icon='playlist_add'] {
+    md-icon-button[icon='playlist_add'] {
       pointer-events: all;
     }
 

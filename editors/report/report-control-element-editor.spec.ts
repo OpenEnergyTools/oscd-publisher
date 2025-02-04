@@ -3,6 +3,8 @@
 import { expect, fixture, html } from '@open-wc/testing';
 
 import { SinonSpy, spy } from 'sinon';
+import { SclTextField } from '@openenergytools/scl-text-field';
+import { SclCheckbox } from '@openenergytools/scl-checkbox';
 
 import {
   isInsert,
@@ -14,6 +16,9 @@ import { reportControlDoc } from './reportControl.testfiles.js';
 
 import './report-control-element-editor.js';
 import type { ReportControlElementEditor } from './report-control-element-editor.js';
+
+window.customElements.define('scl-text-field', SclTextField);
+window.customElements.define('scl-checkbox', SclCheckbox);
 
 describe('ReportControl element editor component', () => {
   let editor: ReportControlElementEditor;
@@ -31,7 +36,7 @@ describe('ReportControl element editor component', () => {
     );
 
     editEvent = spy();
-    window.addEventListener('oscd-edit', editEvent);
+    window.addEventListener('oscd-edit-v2', editEvent);
   });
 
   it('allows to change the ReportControl elements attributes', async () => {
@@ -55,7 +60,7 @@ describe('ReportControl element editor component', () => {
 
     expect(editEvent).to.be.calledOnce;
 
-    const edits = editEvent.args[0][0].detail;
+    const edits = editEvent.args[0][0].detail.edit;
     expect(edits.length).to.equal(2);
 
     expect(edits[0]).to.satisfy(isUpdate);
@@ -93,9 +98,9 @@ describe('ReportControl element editor component', () => {
     editor.optFieldsSave.click();
 
     expect(editEvent).to.be.calledOnce;
-    expect(editEvent.args[0][0].detail).to.satisfy(isUpdate);
+    expect(editEvent.args[0][0].detail.edit).to.satisfy(isUpdate);
 
-    const update = editEvent.args[0][0].detail;
+    const update = editEvent.args[0][0].detail.edit;
     expect(update.element.tagName).to.equal('OptFields');
     expect(update.attributes).to.deep.equal({
       seqNum: 'false',
@@ -122,9 +127,9 @@ describe('ReportControl element editor component', () => {
     editor.trgOpsSave.click();
 
     expect(editEvent).to.be.calledOnce;
-    expect(editEvent.args[0][0].detail).to.satisfy(isUpdate);
+    expect(editEvent.args[0][0].detail.edit).to.satisfy(isUpdate);
 
-    const update = editEvent.args[0][0].detail;
+    const update = editEvent.args[0][0].detail.edit;
     expect(update.element.tagName).to.equal('TrgOps');
     expect(update.attributes).to.deep.equal({
       dchg: 'false',
@@ -158,9 +163,9 @@ describe('ReportControl element editor component', () => {
     editor.trgOpsSave.click();
 
     expect(editEvent).to.be.calledOnce;
-    expect(editEvent.args[0][0].detail).to.satisfy(isInsert);
+    expect(editEvent.args[0][0].detail.edit).to.satisfy(isInsert);
 
-    const insert = editEvent.args[0][0].detail;
+    const insert = editEvent.args[0][0].detail.edit;
     expect(insert.parent.tagName).to.equal('ReportControl');
     expect(insert.node.tagName).to.equal('TrgOps');
     expect(insert.node.hasAttribute('qchg')).to.equal(true);
@@ -190,9 +195,9 @@ describe('ReportControl element editor component', () => {
     editor.optFieldsSave.click();
 
     expect(editEvent).to.be.calledOnce;
-    expect(editEvent.args[0][0].detail).to.satisfy(isInsert);
+    expect(editEvent.args[0][0].detail.edit).to.satisfy(isInsert);
 
-    const insert = editEvent.args[0][0].detail;
+    const insert = editEvent.args[0][0].detail.edit;
     expect(insert.parent.tagName).to.equal('ReportControl');
     expect(insert.node.tagName).to.equal('OptFields');
     expect(insert.node.hasAttribute('timeStamp')).to.equal(true);
@@ -223,7 +228,7 @@ describe('ReportControl element editor component', () => {
 
     expect(editEvent).to.be.calledOnce;
 
-    const edit = editEvent.getCall(0).args[0].detail;
+    const { edit } = editEvent.getCall(0).args[0].detail;
     expect(edit).to.satisfy(isInsert);
     expect(edit.parent.tagName).to.equal('ReportControl');
     expect(edit.reference.tagName).to.equal('OptFields');

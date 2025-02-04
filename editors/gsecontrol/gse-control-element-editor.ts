@@ -8,13 +8,12 @@ import {
   state,
 } from 'lit/decorators.js';
 
-import '@material/mwc-button';
-import '@material/mwc-formfield';
-import '@material/mwc-checkbox';
-import type { Button } from '@material/mwc-button';
-import type { Checkbox } from '@material/mwc-checkbox';
+import { MdTextButton } from '@scopedelement/material-web/button/MdTextButton.js';
 
-import { newEditEvent } from '@openscd/open-scd-core';
+// import '@scopedelement/material-web/checkbox/checkbox.js'
+import type { MdCheckbox } from '@scopedelement/material-web/checkbox/MdCheckbox.js';
+
+import { newEditEvent } from '@openenergytools/open-scd-core';
 import {
   changeGSEContent,
   ChangeGSEContentOptions,
@@ -83,7 +82,7 @@ export class GseControlElementEditor extends LitElement {
 
   @queryAll('.content.gse > scl-text-field') gSEInputs!: SclTextField[];
 
-  @query('.content.gse > .save') gseSave!: Button;
+  @query('.content.gse > .save') gseSave!: MdTextButton;
 
   @queryAll('.input.gsecontrol') gSEControlInputs!: (
     | SclTextField
@@ -91,9 +90,9 @@ export class GseControlElementEditor extends LitElement {
     | SclCheckbox
   )[];
 
-  @query('.content.gsecontrol > .save') gseControlSave!: Button;
+  @query('.content.gsecontrol > .save') gseControlSave!: MdTextButton;
 
-  @query('#instType') instType?: Checkbox;
+  @query('#instType') instType?: MdCheckbox;
 
   public resetInputs(type: 'GSEControl' | 'GSE' = 'GSEControl'): void {
     this.element = null; // removes inputs and forces a re-render
@@ -145,7 +144,8 @@ export class GseControlElementEditor extends LitElement {
         updateGSEControl({
           element: this.element,
           attributes: gSEControlAttrs,
-        })
+        }),
+        { title: `Update GSEControl ${identity(this.element)}` }
       )
     );
 
@@ -194,7 +194,11 @@ export class GseControlElementEditor extends LitElement {
     else if (this.instType?.checked === false)
       options.address!.instType = false;
 
-    this.dispatchEvent(newEditEvent(changeGSEContent(this.gSE, options)));
+    this.dispatchEvent(
+      newEditEvent(changeGSEContent(this.gSE, options), {
+        title: `Update GSE ${identity(this.gSE)}`,
+      })
+    );
 
     this.resetInputs('GSE');
 
@@ -225,13 +229,15 @@ export class GseControlElementEditor extends LitElement {
 
     return html`<div class="content gse">
       <h3>Communication Settings (GSE)</h3>
-      <mwc-formfield label="Add XMLSchema-instance type"
-        ><mwc-checkbox
+      <form>
+        <md-checkbox
           id="instType"
           ?checked="${hasInstType}"
           @change=${this.onGSEInputChange}
-        ></mwc-checkbox></mwc-formfield
-      >${Object.entries(attributes).map(
+        ></md-checkbox>
+        <label class="insttype label">Add XMLSchema-instance type</label>
+      </form>
+      ${Object.entries(attributes).map(
         ([key, value]) =>
           html`<scl-text-field
             label="${key}"
@@ -261,13 +267,12 @@ export class GseControlElementEditor extends LitElement {
         type="number"
         @input=${this.onGSEInputChange}
       ></scl-text-field>
-      <mwc-button
+      <md-text-button
         class="save"
-        label="save"
-        icon="save"
         ?disabled=${!this.gSEdiff}
         @click=${() => this.saveGSEChanges()}
-      ></mwc-button>
+        >Save<md-icon slot="icon">save</md-icon></md-text-button
+      >
     </div>`;
   }
 
@@ -357,13 +362,12 @@ export class GseControlElementEditor extends LitElement {
         @input=${this.onGSEControlInputChange}
         .selectOptions=${['None', 'Signature', 'SignatureAndEncryption']}
       ></scl-select>
-      <mwc-button
+      <md-text-button
         class="save"
-        label="save"
-        icon="save"
         ?disabled=${!this.gSEControlDiff}
         @click=${() => this.saveGSEControlChanges()}
-      ></mwc-button>
+        >Save<md-icon slot="icon">save</md-icon></md-text-button
+      >
     </div>`;
   }
 
@@ -420,6 +424,13 @@ export class GseControlElementEditor extends LitElement {
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
+    }
+
+    .insttype.label {
+      margin-left: 10px;
+      font-family: var(--oscd-theme-text-font), sans-serif;
+      font-weight: 300;
+      color: var(--oscd-theme-base00);
     }
 
     *[iconTrailing='search'] {

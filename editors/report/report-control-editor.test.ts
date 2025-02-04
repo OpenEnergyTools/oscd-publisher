@@ -10,6 +10,7 @@ import {
   otherReportControlDoc,
 } from './reportControl.testfiles.js';
 
+import '../../oscd-publisher.js'; // for loading of components only
 import './report-control-editor.js';
 import type { ReportControlEditor } from './report-control-editor.js';
 
@@ -185,7 +186,7 @@ describe('ReportControl editor component', () => {
     describe('with unreferenced DataSet', () => {
       beforeEach(async () => {
         await setViewport({ width: 1200, height: 800 });
-        await sendMouse({ type: 'click', position: [150, 300] });
+        await sendMouse({ type: 'click', position: [150, 340] });
         await timeout(200);
       });
 

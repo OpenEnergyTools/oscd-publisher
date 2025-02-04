@@ -7,7 +7,7 @@ import {
   queryAll,
   state,
 } from 'lit/decorators.js';
-import { newEditEvent } from '@openscd/open-scd-core';
+import { newEditEvent } from '@openenergytools/open-scd-core';
 import {
   ChangeGseOrSmvAddressOptions,
   changeSMVContent,
@@ -16,11 +16,9 @@ import {
   updateSampledValueControl,
 } from '@openenergytools/scl-lib';
 
-import '@material/mwc-button';
-import '@material/mwc-checkbox';
-import '@material/mwc-formfield';
-import type { Button } from '@material/mwc-button';
-import type { Checkbox } from '@material/mwc-checkbox';
+// import '@scopedelement/material-web/checkbox/checkbox.js'
+import type { MdCheckbox } from '@scopedelement/material-web/checkbox/MdCheckbox.js';
+import { MdTextButton } from '@scopedelement/material-web/button/MdTextButton.js';
 
 import '@openenergytools/scl-checkbox';
 import '@openenergytools/scl-select';
@@ -103,17 +101,17 @@ export class SampledValueControlElementEditor extends LitElement {
   @queryAll('.smvcontrol.attribute')
   sampledValueControlInputs!: (SclTextField | SclSelect | SclCheckbox)[];
 
-  @query('.smvcontrol.save') smvControlSave!: Button;
+  @query('.smvcontrol.save') smvControlSave!: MdTextButton;
 
   @queryAll('.smv.attribute') sMVInputs!: SclTextField[];
 
-  @query('.smv.save') smvSave!: Button;
+  @query('.smv.save') smvSave!: MdTextButton;
 
   @queryAll('.smvopts.attribute') smvOptsInputs!: SclCheckbox[];
 
-  @query('.smvopts.save') smvOptsSave!: Button;
+  @query('.smvopts.save') smvOptsSave!: MdTextButton;
 
-  @query('.smv.insttype') instType?: Checkbox;
+  @query('.smv.insttype') instType?: MdCheckbox;
 
   public resetInputs(
     type: 'SampledValueControl' | 'SMV' = 'SampledValueControl'
@@ -165,7 +163,8 @@ export class SampledValueControlElementEditor extends LitElement {
         updateSampledValueControl({
           element: this.element,
           attributes: sampledValueControlAttrs,
-        })
+        }),
+        { title: `Update SampledValueControl ${identity(this.element)}` }
       )
     );
 
@@ -208,7 +207,11 @@ export class SampledValueControlElementEditor extends LitElement {
     if (this.instType?.checked === true) options.instType = true;
     else if (this.instType?.checked === false) options.instType = false;
 
-    this.dispatchEvent(newEditEvent(changeSMVContent(this.sMV, options)));
+    this.dispatchEvent(
+      newEditEvent(changeSMVContent(this.sMV, options), {
+        title: `Update SampledValueControl SMV ${identity(this.element)}`,
+      })
+    );
 
     this.resetInputs('SMV');
 
@@ -240,7 +243,11 @@ export class SampledValueControlElementEditor extends LitElement {
         smvOptsAttrs[input.label] = input.value;
 
     const updateEdit = { element: smvOpts, attributes: smvOptsAttrs };
-    this.dispatchEvent(newEditEvent(updateEdit));
+    this.dispatchEvent(
+      newEditEvent(updateEdit, {
+        title: `Update SampledValueControl Options ${identity(this.element)}`,
+      })
+    );
 
     this.onSmvOptsInputChange();
   }
@@ -265,13 +272,15 @@ export class SampledValueControlElementEditor extends LitElement {
 
     return html` <div class="content smv">
         <h3>Communication Settings (SMV)</h3>
-        <mwc-formfield label="Add XMLSchema-instance type"
-          ><mwc-checkbox
+        <form>
+          <md-checkbox
             class="smv insttype"
             ?checked="${hasInstType}"
             @change=${this.onSMVInputChange}
-          ></mwc-checkbox></mwc-formfield
-        >${Object.entries(attributes).map(
+          ></md-checkbox>
+          <label class="insttype label">Add XMLSchema-instance type</label>
+        </form>
+        ${Object.entries(attributes).map(
           ([key, value]) =>
             html`<scl-text-field
               class="smv attribute"
@@ -286,13 +295,12 @@ export class SampledValueControlElementEditor extends LitElement {
             ></scl-text-field>`
         )}
       </div>
-      <mwc-button
+      <md-text-button
         class="smv save"
-        label="save"
-        icon="save"
         ?disabled=${!this.sMVdiff}
         @click=${() => this.saveSMVChanges()}
-      ></mwc-button>`;
+        >Save<md-icon slot="icon">save</md-icon></md-text-button
+      >`;
   }
 
   private renderSmvOptsContent(): TemplateResult {
@@ -338,13 +346,12 @@ export class SampledValueControlElementEditor extends LitElement {
             ></scl-checkbox>`
         )}
       </div>
-      <mwc-button
+      <md-text-button
         class="smvopts save"
-        label="save"
-        icon="save"
         ?disabled=${!this.smvOptsDiff}
         @click=${() => this.saveSmvOptsChanges()}
-      ></mwc-button>`;
+        >Save<md-icon slot="icon">save</md-icon></md-text-button
+      >`;
   }
 
   private renderOtherElements(): TemplateResult {
@@ -461,13 +468,14 @@ export class SampledValueControlElementEditor extends LitElement {
         @input="${this.onSampledValueControlInputChange}"
         .selectOptions=${['None', 'Signature', 'SignatureAndEncryption']}
       ></scl-select
-      ><mwc-button
+      ><md-text-button
         class="smvcontrol save"
         label="save"
         icon="save"
         ?disabled=${!this.sampledValueControlDiff}
         @click="${this.saveSampledValueControlChanges}"
-      ></mwc-button>
+        >Save<md-icon slot="save"></md-icon
+      ></md-text-button>
     </div>`;
   }
 
@@ -526,6 +534,13 @@ export class SampledValueControlElementEditor extends LitElement {
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
+    }
+
+    .insttype.label {
+      margin-left: 10px;
+      font-weight: 300;
+      font-family: var(--oscd-theme-text-font), sans-serif;
+      color: var(--oscd-theme-base00);
     }
 
     *[iconTrailing='search'] {

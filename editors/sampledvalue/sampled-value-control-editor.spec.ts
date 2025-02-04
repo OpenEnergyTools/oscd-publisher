@@ -11,10 +11,18 @@ import {
   isUpdate,
 } from '@openenergytools/scl-lib/dist/foundation/utils.js';
 
+import { MdDialog } from '@scopedelement/material-web/dialog/MdDialog.js';
+import { MdOutlinedButton } from '@scopedelement/material-web/button/MdOutlinedButton.js';
+import { MdTextButton } from '@scopedelement/material-web/button/MdTextButton.js';
+
 import { smvControlDoc } from './smvControl.testfiles.js';
 
 import './sampled-value-control-editor.js';
 import type { SampledValueControlEditor } from './sampled-value-control-editor.js';
+
+window.customElements.define('md-outlined-button', MdOutlinedButton);
+window.customElements.define('md-text-button', MdTextButton);
+window.customElements.define('md-dialog', MdDialog);
 
 function timeout(ms: number) {
   return new Promise(res => {
@@ -39,15 +47,15 @@ describe('SampledValueControl editor component', () => {
     );
 
     editEvent = spy();
-    window.addEventListener('oscd-edit', editEvent);
+    window.addEventListener('oscd-edit-v2', editEvent);
   });
 
   it('allows to remove and existing SampledValueControl element', async () => {
     await sendMouse({ type: 'click', position: [760, 200] });
 
     expect(editEvent).to.have.been.calledOnce;
-    expect(editEvent.args[0][0].detail[0]).to.satisfy(isRemove);
-    expect(editEvent.args[0][0].detail[0].node.tagName).to.equal(
+    expect(editEvent.args[0][0].detail.edit[0]).to.satisfy(isRemove);
+    expect(editEvent.args[0][0].detail.edit[0].node.tagName).to.equal(
       'SampledValueControl'
     );
   });
@@ -57,9 +65,11 @@ describe('SampledValueControl editor component', () => {
     editor.newDataSet.click();
 
     expect(editEvent).to.have.been.calledOnce;
-    expect(editEvent.args[0][0].detail[0]).to.satisfy(isInsert);
-    expect(editEvent.args[0][0].detail[0].parent.tagName).to.equal('LN0');
-    expect(editEvent.args[0][0].detail[0].node.tagName).to.equal('DataSet');
+    expect(editEvent.args[0][0].detail.edit[0]).to.satisfy(isInsert);
+    expect(editEvent.args[0][0].detail.edit[0].parent.tagName).to.equal('LN0');
+    expect(editEvent.args[0][0].detail.edit[0].node.tagName).to.equal(
+      'DataSet'
+    );
   });
 
   it('allows to change an existing DataSet', async () => {
@@ -68,13 +78,15 @@ describe('SampledValueControl editor component', () => {
 
     editor.changeDataSet.click();
     await timeout(200);
-    await sendMouse({ type: 'click', position: [400, 420] });
+    await sendMouse({ type: 'click', position: [400, 450] });
 
     expect(editEvent).to.have.been.calledOnce;
-    expect(editEvent.args[0][0].detail).to.satisfy(isUpdate);
-    expect(editEvent.args[0][0].detail.element.tagName).to.equal(
+    expect(editEvent.args[0][0].detail.edit).to.satisfy(isUpdate);
+    expect(editEvent.args[0][0].detail.edit.element.tagName).to.equal(
       'SampledValueControl'
     );
-    expect(editEvent.args[0][0].detail.attributes.datSet).to.equal('datSet2');
+    expect(editEvent.args[0][0].detail.edit.attributes.datSet).to.equal(
+      'datSet2'
+    );
   });
 });

@@ -2,10 +2,9 @@
 import { css, html, LitElement, TemplateResult } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 
-import '@material/mwc-button';
-import type { Button } from '@material/mwc-button';
+import { MdOutlinedButton } from '@scopedelement/material-web/button/MdOutlinedButton.js';
 
-import { newEditEvent } from '@openscd/open-scd-core';
+import { newEditEvent } from '@openenergytools/open-scd-core';
 import {
   createDataSet,
   identity,
@@ -15,7 +14,7 @@ import '@openenergytools/filterable-lists/dist/action-list.js';
 import type {
   ActionItem,
   ActionList,
-} from '@openenergytools/filterable-lists/dist/action-list.js';
+} from '@openenergytools/filterable-lists/dist/ActionList.js';
 
 import './data-set-element-editor.js';
 import type { DataSetElementEditor } from './data-set-element-editor.js';
@@ -41,7 +40,7 @@ export class DataSetEditor extends LitElement {
 
   @query('.selectionlist') selectionList!: ActionList;
 
-  @query('mwc-button') selectDataSetButton!: Button;
+  @query('.change.scl.element') selectDataSetButton!: MdOutlinedButton;
 
   @query('data-set-element-editor')
   dataSetElementEditor!: DataSetElementEditor;
@@ -93,7 +92,9 @@ export class DataSetEditor extends LitElement {
               callback: () => {
                 const insertDataSet = createDataSet(ied);
                 if (insertDataSet)
-                  this.dispatchEvent(newEditEvent(insertDataSet));
+                  this.dispatchEvent(
+                    newEditEvent(insertDataSet, { title: `Create New DataSet` })
+                  );
               },
             },
           ],
@@ -117,7 +118,9 @@ export class DataSetEditor extends LitElement {
               icon: 'delete',
               callback: () => {
                 this.dispatchEvent(
-                  newEditEvent(removeDataSet({ node: dataSet }))
+                  newEditEvent(removeDataSet({ node: dataSet }), {
+                    title: `Remove DataSet`,
+                  })
                 );
 
                 this.selectedDataSet = undefined;
@@ -139,15 +142,14 @@ export class DataSetEditor extends LitElement {
   }
 
   private renderToggleButton(): TemplateResult {
-    return html`<mwc-button
+    return html`<md-outlined-button
       class="change scl element"
-      outlined
-      label="Select DataSet"
       @click=${() => {
         this.selectionList.classList.remove('hidden');
         this.selectDataSetButton.classList.add('hidden');
       }}
-    ></mwc-button>`;
+      >Select DataSet</md-outlined-button
+    >`;
   }
 
   render(): TemplateResult {
@@ -162,15 +164,11 @@ export class DataSetEditor extends LitElement {
   static styles = css`
     ${styles}
 
-    .selectionlist {
-      z-index: 2;
-    }
-
     data-set-element-editor {
       flex: auto;
     }
 
-    mwc-icon-button[icon='playlist_add'] {
+    md-icon-button[icon='playlist_add'] {
       pointer-events: all;
     }
 

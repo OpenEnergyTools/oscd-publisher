@@ -10,10 +10,16 @@ import {
   isRemove,
 } from '@openenergytools/scl-lib/dist/foundation/utils.js';
 
+import { MdDialog } from '@scopedelement/material-web/dialog/MdDialog.js';
+import { SclTextField } from '@openenergytools/scl-text-field';
+
 import { dataSetDoc } from './data-set-editor.testfiles.js';
 
 import './data-set-element-editor.js';
 import type { DataSetElementEditor } from './data-set-element-editor.js';
+
+window.customElements.define('md-dialog', MdDialog);
+window.customElements.define('scl-text-field', SclTextField);
 
 const doc = new DOMParser().parseFromString(dataSetDoc, 'application/xml');
 const dataSet = doc.querySelector('LDevice[inst="ldInst1"] DataSet')!;
@@ -37,7 +43,7 @@ describe('DataSet element editor', () => {
     );
 
     editEvent = spy();
-    window.addEventListener('oscd-edit', editEvent);
+    window.addEventListener('oscd-edit-v2', editEvent);
   });
 
   it('allows to change DataSets name attribute', async () => {
@@ -47,7 +53,7 @@ describe('DataSet element editor', () => {
 
     expect(editEvent).to.have.be.calledOnce;
 
-    expect(editEvent.args[0][0].detail[0].attributes.name).to.equal(
+    expect(editEvent.args[0][0].detail.edit[0].attributes.name).to.equal(
       'SomeDataSetName'
     );
   });
@@ -59,7 +65,7 @@ describe('DataSet element editor', () => {
     await editor.saveButton.click();
 
     expect(editEvent).to.have.be.calledOnce;
-    expect(editEvent.args[0][0].detail[0].attributes.desc).to.equal(
+    expect(editEvent.args[0][0].detail.edit[0].attributes.desc).to.equal(
       'SomeNewDesc'
     );
   });
@@ -68,46 +74,46 @@ describe('DataSet element editor', () => {
     await sendMouse({ type: 'click', position: [700, 550] });
 
     expect(editEvent).to.have.be.calledOnce;
-    expect(editEvent.args[0][0].detail.length).to.equal(1);
-    expect(editEvent.args[0][0].detail[0].node.tagName).to.equal('FCDA');
+    expect(editEvent.args[0][0].detail.edit.length).to.equal(1);
+    expect(editEvent.args[0][0].detail.edit[0].node.tagName).to.equal('FCDA');
   });
 
   it('allows to move FCDA child one step up', async () => {
     await setViewport({ width: 800, height: 1200 });
     await sendMouse({ type: 'click', position: [740, 600] }); // open menu
     await timeout(200); // await menu to be opened
-    await sendMouse({ type: 'click', position: [740, 700] }); // click on move up
+    await sendMouse({ type: 'click', position: [740, 680] }); // click on move up
 
     const toBeMovedFCDA = dataSet.querySelectorAll(':scope > FCDA')[1];
     const reference = toBeMovedFCDA.previousElementSibling;
 
     expect(editEvent).to.have.be.calledOnce;
-    expect(editEvent.args[0][0].detail.length).to.equal(2);
-    expect(editEvent.args[0][0].detail[0]).to.satisfy(isRemove);
-    expect(editEvent.args[0][0].detail[0].node).to.equal(toBeMovedFCDA);
-    expect(editEvent.args[0][0].detail[1]).to.satisfy(isInsert);
-    expect(editEvent.args[0][0].detail[1].parent).to.equal(dataSet);
-    expect(editEvent.args[0][0].detail[1].node).to.equal(toBeMovedFCDA);
-    expect(editEvent.args[0][0].detail[1].reference).to.equal(reference);
+    expect(editEvent.args[0][0].detail.edit.length).to.equal(2);
+    expect(editEvent.args[0][0].detail.edit[0]).to.satisfy(isRemove);
+    expect(editEvent.args[0][0].detail.edit[0].node).to.equal(toBeMovedFCDA);
+    expect(editEvent.args[0][0].detail.edit[1]).to.satisfy(isInsert);
+    expect(editEvent.args[0][0].detail.edit[1].parent).to.equal(dataSet);
+    expect(editEvent.args[0][0].detail.edit[1].node).to.equal(toBeMovedFCDA);
+    expect(editEvent.args[0][0].detail.edit[1].reference).to.equal(reference);
   });
 
   it('allows to move FCDA child one step down', async () => {
     await setViewport({ width: 800, height: 1200 });
     await sendMouse({ type: 'click', position: [740, 600] }); // open menu
     await timeout(200); // await menu to be opened
-    await sendMouse({ type: 'click', position: [740, 780] }); // click on move down
+    await sendMouse({ type: 'click', position: [740, 700] }); // click on move down
 
     const toBeMovedFCDA = dataSet.querySelectorAll(':scope > FCDA')[1];
     const reference = toBeMovedFCDA.nextElementSibling?.nextElementSibling;
 
     expect(editEvent).to.have.be.calledOnce;
-    expect(editEvent.args[0][0].detail.length).to.equal(2);
-    expect(editEvent.args[0][0].detail[0]).to.satisfy(isRemove);
-    expect(editEvent.args[0][0].detail[0].node).to.equal(toBeMovedFCDA);
-    expect(editEvent.args[0][0].detail[1]).to.satisfy(isInsert);
-    expect(editEvent.args[0][0].detail[1].parent).to.equal(dataSet);
-    expect(editEvent.args[0][0].detail[1].node).to.equal(toBeMovedFCDA);
-    expect(editEvent.args[0][0].detail[1].reference).to.equal(reference);
+    expect(editEvent.args[0][0].detail.edit.length).to.equal(2);
+    expect(editEvent.args[0][0].detail.edit[0]).to.satisfy(isRemove);
+    expect(editEvent.args[0][0].detail.edit[0].node).to.equal(toBeMovedFCDA);
+    expect(editEvent.args[0][0].detail.edit[1]).to.satisfy(isInsert);
+    expect(editEvent.args[0][0].detail.edit[1].parent).to.equal(dataSet);
+    expect(editEvent.args[0][0].detail.edit[1].node).to.equal(toBeMovedFCDA);
+    expect(editEvent.args[0][0].detail.edit[1].reference).to.equal(reference);
   });
 
   it('allows adds new data attribute to DataSet', () => {
@@ -133,16 +139,12 @@ describe('DataSet element editor', () => {
       ],
     ];
 
-    (
-      editor.daPickerDialog.querySelector(
-        '*[slot="primaryAction"]'
-      ) as HTMLElement
-    ).click();
+    editor.daPickerSaveButton.click();
 
     expect(editEvent).to.have.be.calledOnce;
-    expect(editEvent.args[0][0].detail.length).to.equal(2);
+    expect(editEvent.args[0][0].detail.edit.length).to.equal(2);
 
-    const insert1 = editEvent.args[0][0].detail[0];
+    const insert1 = editEvent.args[0][0].detail.edit[0];
     expect(insert1).to.satisfy(isInsert);
     expect(insert1.node.getAttribute('ldInst')).to.equal('ldInst1');
     expect(insert1.node.getAttribute('prefix')).to.equal('prefix');
@@ -152,7 +154,7 @@ describe('DataSet element editor', () => {
     expect(insert1.node.getAttribute('daName')).to.equal('cVal.mag.f');
     expect(insert1.node.getAttribute('fc')).to.equal('MX');
 
-    const insert2 = editEvent.args[0][0].detail[1];
+    const insert2 = editEvent.args[0][0].detail.edit[1];
     expect(insert2).to.satisfy(isInsert);
     expect(insert2.node.getAttribute('ldInst')).to.equal('ldInst1');
     expect(insert2.node.getAttribute('prefix')).to.equal('prefix');
@@ -182,16 +184,12 @@ describe('DataSet element editor', () => {
       ],
     ];
 
-    (
-      editor.doPickerDialog.querySelector(
-        '*[slot="primaryAction"]'
-      ) as HTMLElement
-    ).click();
+    editor.doPickerSaveButton.click();
 
     expect(editEvent).to.have.be.calledOnce;
-    expect(editEvent.args[0][0].detail.length).to.equal(2);
+    expect(editEvent.args[0][0].detail.edit.length).to.equal(2);
 
-    const insert1 = editEvent.args[0][0].detail[0];
+    const insert1 = editEvent.args[0][0].detail.edit[0];
     expect(insert1).to.satisfy(isInsert);
     expect(insert1.node.getAttribute('ldInst')).to.equal('ldInst1');
     expect(insert1.node.getAttribute('prefix')).to.equal('prefix');
@@ -201,7 +199,7 @@ describe('DataSet element editor', () => {
     expect(insert1.node.getAttribute('daName')).to.be.null;
     expect(insert1.node.getAttribute('fc')).to.equal('MX');
 
-    const insert2 = editEvent.args[0][0].detail[1];
+    const insert2 = editEvent.args[0][0].detail.edit[1];
     expect(insert2).to.satisfy(isInsert);
     expect(insert2.node.getAttribute('ldInst')).to.equal('ldInst1');
     expect(insert2.node.getAttribute('prefix')).to.equal('prefix');
