@@ -60,7 +60,7 @@ describe('SampledValueControl element editor component', () => {
 
     (editor.sampledValueControlInputs![7] as SclSelect).value = 'None';
 
-    await timeout(100);
+    await timeout(150);
     editor.smvControlSave.click();
 
     expect(editEvent).to.be.calledOnce;
