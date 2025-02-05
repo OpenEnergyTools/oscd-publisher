@@ -57,7 +57,7 @@ describe('GSEControl element editor component', () => {
 
     editor.gSEControlInputs![6].value = 'None';
 
-    await editor.updateComplete;
+    await timeout(100);
     editor.gseControlSave.click();
 
     expect(editEvent).to.be.calledOnce;
