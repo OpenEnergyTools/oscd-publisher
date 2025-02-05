@@ -1,20 +1,23 @@
 /* eslint-disable no-unused-expressions */
 /* eslint-disable import/no-extraneous-dependencies */
 import { expect, fixture, html } from '@open-wc/testing';
-import { SclTextField } from '@openenergytools/scl-text-field';
-import { SclSelect } from '@openenergytools/scl-select';
-import { SclCheckbox } from '@openenergytools/scl-checkbox';
 
 import { SinonSpy, spy } from 'sinon';
 
 import { gseControlDoc } from './gseControl.testfiles.js';
 
-import './gse-control-element-editor.js';
-import type { GseControlElementEditor } from './gse-control-element-editor.js';
+import { GseControlElementEditor } from './gse-control-element-editor.js';
 
-window.customElements.define('scl-text-field', SclTextField);
-window.customElements.define('scl-select', SclSelect);
-window.customElements.define('scl-checkbox', SclCheckbox);
+window.customElements.define(
+  'gse-control-element-editor',
+  GseControlElementEditor
+);
+
+function timeout(ms: number) {
+  return new Promise(res => {
+    setTimeout(res, ms);
+  });
+}
 
 describe('GSEControl element editor component', () => {
   let editor: GseControlElementEditor;
@@ -54,7 +57,7 @@ describe('GSEControl element editor component', () => {
 
     editor.gSEControlInputs![6].value = 'None';
 
-    await editor.updateComplete;
+    await timeout(100);
     editor.gseControlSave.click();
 
     expect(editEvent).to.be.calledOnce;
@@ -82,7 +85,7 @@ describe('GSEControl element editor component', () => {
     editor.gSEInputs![4].value = '76';
     editor.gSEInputs![5].value = '465';
 
-    await editor.updateComplete;
+    await timeout(100);
     editor.gseSave.click();
 
     expect(editEvent).to.be.calledOnce;

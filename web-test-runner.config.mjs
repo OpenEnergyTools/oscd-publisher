@@ -180,7 +180,7 @@ export default /** @type {import("@web/test-runner").TestRunnerConfig} */ ({
   concurrency: 2,
 
   /** Browsers to run tests on */
-  browsers,
+  // browsers,
 
   // See documentation for all available options
 });
