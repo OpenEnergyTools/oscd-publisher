@@ -60,7 +60,7 @@ describe('SampledValueControl element editor component', () => {
 
     (editor.sampledValueControlInputs![7] as SclSelect).value = 'None';
 
-    await timeout(100);
+    await timeout(150);
     editor.smvControlSave.click();
 
     expect(editEvent).to.be.calledOnce;
@@ -89,7 +89,7 @@ describe('SampledValueControl element editor component', () => {
     editor.sMVInputs![3].nullSwitch?.click();
     await editor.updateComplete;
 
-    await timeout(100);
+    await timeout(150);
     editor.smvSave.click();
 
     expect(editEvent).to.be.calledOnce;
@@ -111,7 +111,7 @@ describe('SampledValueControl element editor component', () => {
     editor.smvOptsInputs![5].value = 'false';
     editor.smvOptsInputs![6].value = 'false';
 
-    await timeout(100);
+    await timeout(150);
     editor.smvOptsSave.click();
 
     expect(editEvent).to.be.calledOnce;
