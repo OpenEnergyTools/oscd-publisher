@@ -46,7 +46,7 @@ describe('DataSet element editor', () => {
     editor.onInputChange();
     await timeout(50);
 
-    await editor.saveButton.click();
+    editor.saveButton.click();
 
     expect(editEvent).to.have.be.calledOnce;
 
@@ -61,7 +61,7 @@ describe('DataSet element editor', () => {
     editor.onInputChange();
     await timeout(50);
 
-    await editor.saveButton.click();
+    editor.saveButton.click();
 
     expect(editEvent).to.have.be.calledOnce;
     expect(editEvent.args[0][0].detail.edit[0].attributes.desc).to.equal(
@@ -82,8 +82,6 @@ describe('DataSet element editor', () => {
     await sendMouse({ type: 'click', position: [740, 650] }); // open menu
     await timeout(500); // await menu to be opened
     await sendMouse({ type: 'click', position: [740, 700] }); // click on move up
-    await editor.updateComplete;
-    await timeout(200);
 
     const toBeMovedFCDA = dataSet.querySelectorAll(':scope > FCDA')[1];
     const reference = toBeMovedFCDA.previousElementSibling;
