@@ -6,3 +6,11 @@ export declare function addFCDOs(dataSet: Element, fcPaths: {
     path: Element[];
     fc: string;
 }[]): Insert[];
+export type fcdaDesc = {
+    LDevice?: string | null;
+    LN?: string | null;
+    DOI?: string | null;
+    SDI?: string[];
+    DAI?: string | null;
+};
+export declare function getFcdaInstDesc(fcda: Element): fcdaDesc;

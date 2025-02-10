@@ -40297,20 +40297,93 @@ function addFCDOs(dataSet, fcPaths) {
     }
     return actions;
 }
+function getFcdaInstDesc(fcda) {
+    var _a, _b;
+    const [doName, daName] = ['doName', 'daName'].map(attr => fcda.getAttribute(attr));
+    const ied = fcda.closest('IED');
+    if (!ied)
+        return {};
+    const anyLn = Array.from(ied.querySelectorAll(`:scope > AccessPoint > Server > LDevice[inst="${fcda.getAttribute('ldInst')}"] > LN, :scope > AccessPoint > Server > LDevice[inst="${fcda.getAttribute('ldInst')}"] > LN0`)).find(lN => {
+        var _a, _b, _c, _d, _e;
+        return ((_a = lN.getAttribute('prefix')) !== null && _a !== void 0 ? _a : '') ===
+            ((_b = fcda.getAttribute('prefix')) !== null && _b !== void 0 ? _b : '') &&
+            lN.getAttribute('lnClass') === ((_c = fcda.getAttribute('lnClass')) !== null && _c !== void 0 ? _c : '') &&
+            ((_d = lN.getAttribute('inst')) !== null && _d !== void 0 ? _d : '') === ((_e = fcda.getAttribute('lnInst')) !== null && _e !== void 0 ? _e : '');
+    });
+    if (!anyLn)
+        return {};
+    let descs = {};
+    const ldDesc = anyLn.closest('LDevice').getAttribute('desc');
+    descs = { ...descs, ...(ldDesc && ldDesc !== '' && { LDevice: ldDesc }) };
+    const lnDesc = anyLn.getAttribute('desc');
+    descs = { ...descs, ...(lnDesc && lnDesc !== '' && { LN: lnDesc }) };
+    const doNames = doName.split('.');
+    const daNames = daName === null || daName === void 0 ? void 0 : daName.split('.');
+    const doi = anyLn.querySelector(`:scope > DOI[name="${doNames[0]}"`);
+    if (!doi)
+        return descs;
+    let doiDesc = doi === null || doi === void 0 ? void 0 : doi.getAttribute('desc');
+    if (!doiDesc) {
+        doiDesc =
+            (_b = (_a = doi === null || doi === void 0 ? void 0 : doi.querySelector(':scope > DAI[name="d"] > Val')) === null || _a === void 0 ? void 0 : _a.textContent) !== null && _b !== void 0 ? _b : null;
+    }
+    descs = { ...descs, ...(doiDesc && doiDesc !== '' && { DOI: doiDesc }) };
+    let previousDI = doi;
+    const daAsSDI = daNames ? daNames.slice(0, daNames.length - 1) : [];
+    doNames
+        .concat(daAsSDI)
+        .slice(1)
+        .forEach(sdiName => {
+        var _a, _b;
+        const sdi = previousDI.querySelector(`:scope > SDI[name="${sdiName}"]`);
+        if (sdi)
+            previousDI = sdi;
+        let sdiDesc = sdi === null || sdi === void 0 ? void 0 : sdi.getAttribute('desc');
+        if (!sdiDesc) {
+            sdiDesc =
+                (_b = (_a = sdi === null || sdi === void 0 ? void 0 : sdi.querySelector(':scope > DAI[name="d"] > Val')) === null || _a === void 0 ? void 0 : _a.textContent) !== null && _b !== void 0 ? _b : null;
+        }
+        if (!('SDI' in descs)) {
+            descs = {
+                ...descs,
+                ...(sdiDesc && sdiDesc !== '' && { SDI: [sdiDesc] }),
+            };
+        }
+        else if (sdiDesc)
+            descs.SDI.push(sdiDesc);
+    });
+    if (!daName || !daNames)
+        return descs;
+    // ix and array elements not supported
+    const lastdaName = daNames === null || daNames === void 0 ? void 0 : daNames.slice(daNames.length - 1);
+    const dai = previousDI.querySelector(`:scope > DAI[name="${lastdaName}"]`);
+    if (!dai)
+        return descs;
+    const daiDesc = dai.getAttribute('desc');
+    descs = { ...descs, ...(daiDesc && daiDesc !== '' && { DAI: daiDesc }) };
+    return descs;
+}
 
 /* eslint-disable import/no-extraneous-dependencies */
-function dataAttributeObject(da) {
+function dataAttributeObject(da, daiOrsdi) {
     const tree = {};
     const children = {};
     const daType = da.ownerDocument.querySelector(`DAType[id="${da.getAttribute('type')}"]`);
     if (!daType)
         return tree;
-    Array.from(daType.querySelectorAll('BDA')).forEach(bda => {
-        var _a;
-        const bdaName = (_a = bda.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_BDA';
+    Array.from(daType.querySelectorAll(':scope > BDA')).forEach(bda => {
+        var _a, _b, _c;
+        const name = bda.getAttribute('name');
+        const sdiOrDai = (_a = daiOrsdi === null || daiOrsdi === void 0 ? void 0 : daiOrsdi.querySelector(`:scope > SDI[name="${name}"], :scope > DAI[name="${name}"]`)) !== null && _a !== void 0 ? _a : undefined;
+        let desc = sdiOrDai === null || sdiOrDai === void 0 ? void 0 : sdiOrDai.getAttribute('desc');
+        if (!desc) {
+            desc =
+                (_c = (_b = sdiOrDai === null || sdiOrDai === void 0 ? void 0 : sdiOrDai.querySelector(':scope > DAI[name="d"] > Val')) === null || _b === void 0 ? void 0 : _b.textContent) !== null && _c !== void 0 ? _c : null;
+        }
+        const bdaName = `${name !== null && name !== void 0 ? name : 'UNKNOWN_BDA'}${desc ? ` (${desc})` : ''}`;
         const id = `BDA: ${identity(bda)}`;
         if (bda.getAttribute('bType') === 'Struct') {
-            children[id] = dataAttributeObject(bda);
+            children[id] = dataAttributeObject(bda, sdiOrDai);
             children[id].text = bdaName;
         }
         else {
@@ -40321,25 +40394,40 @@ function dataAttributeObject(da) {
     tree.children = children;
     return tree;
 }
-function subDataObjectsObject$1(sdo) {
+function subDataObjectsObject$1(sdo, sDiOrDai) {
     const tree = {};
     const children = {};
     const doType = sdo.ownerDocument.querySelector(`DOType[id="${sdo.getAttribute('type')}"]`);
     if (!doType)
         return tree;
-    Array.from(doType.querySelectorAll('SDO,DA')).forEach(sDoOrDa => {
-        var _a, _b;
+    Array.from(doType.querySelectorAll(':scope > SDO, :scope > DA')).forEach(sDoOrDa => {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         if (sDoOrDa.tagName === 'SDO') {
-            const sDoName = (_a = sDoOrDa.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_SDO';
+            const name = (_a = sDoOrDa.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_SDO';
+            const sdi = (_b = sDiOrDai === null || sDiOrDai === void 0 ? void 0 : sDiOrDai.querySelector(`:scope > SDI[name="${name}"]`)) !== null && _b !== void 0 ? _b : undefined;
+            let desc = sdi === null || sdi === void 0 ? void 0 : sdi.getAttribute('desc');
+            if (!desc) {
+                desc =
+                    (_d = (_c = sdi === null || sdi === void 0 ? void 0 : sdi.querySelector(':scope > DAI[name="d"] > Val')) === null || _c === void 0 ? void 0 : _c.textContent) !== null && _d !== void 0 ? _d : null;
+            }
+            const sDoName = `${name}${desc ? ` (${desc})` : ''}`;
             const id = `SDO: ${identity(sDoOrDa)}`;
-            children[id] = subDataObjectsObject$1(sDoOrDa);
+            children[id] = subDataObjectsObject$1(sDoOrDa, sdi);
             children[id].text = sDoName;
         }
         else {
-            const daName = (_b = sDoOrDa.getAttribute('name')) !== null && _b !== void 0 ? _b : 'UNKNOWN_DA';
+            const name = (_e = sDoOrDa.getAttribute('name')) !== null && _e !== void 0 ? _e : 'UNKNOWN_SDO_OR_DA';
+            const sdiOrDai = (_f = sDiOrDai === null || sDiOrDai === void 0 ? void 0 : sDiOrDai.querySelector(`:scope > SDI[name="${name}"], :scope > DAI[name="${name}"]`)) !== null && _f !== void 0 ? _f : undefined;
+            let desc = sdiOrDai === null || sdiOrDai === void 0 ? void 0 : sdiOrDai.getAttribute('desc');
+            if (!desc && (sdiOrDai === null || sdiOrDai === void 0 ? void 0 : sdiOrDai.tagName) === 'SDI') {
+                desc =
+                    (_h = (_g = sdiOrDai === null || sdiOrDai === void 0 ? void 0 : sdiOrDai.querySelector(':scope > DAI[name="d"] > Val')) === null || _g === void 0 ? void 0 : _g.textContent) !== null && _h !== void 0 ? _h : null;
+            }
+            const fc = (_j = sDoOrDa.getAttribute('fc')) !== null && _j !== void 0 ? _j : 'UNKNOWN_FC';
+            const daName = `${name}${fc ? ` - FC: ${fc}` : ''}${desc ? ` (${desc})` : ''}`;
             const id = `DA: ${identity(sDoOrDa)}`;
             if (sDoOrDa.getAttribute('bType') === 'Struct') {
-                children[id] = dataAttributeObject(sDoOrDa);
+                children[id] = dataAttributeObject(sDoOrDa, sdiOrDai);
                 children[id].text = daName;
             }
             else {
@@ -40351,25 +40439,36 @@ function subDataObjectsObject$1(sdo) {
     tree.children = children;
     return tree;
 }
-function dataObjectObject$1(dO) {
+function dataObjectObject$1(dO, dOI) {
     const tree = {};
     const children = {};
     const doType = dO.ownerDocument.querySelector(`DOType[id="${dO.getAttribute('type')}"]`);
     if (!doType)
         return tree;
-    Array.from(doType.querySelectorAll('SDO,DA')).forEach(sDoOrDa => {
-        var _a, _b;
+    Array.from(doType.querySelectorAll(':scope > SDO, :scope > DA')).forEach(sDoOrDa => {
+        var _a, _b, _c, _d, _e, _f, _g;
         if (sDoOrDa.tagName === 'SDO') {
-            const sDoName = (_a = sDoOrDa.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_SDO';
+            const name = (_a = sDoOrDa.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_SDO';
+            const sDi = (_b = dOI === null || dOI === void 0 ? void 0 : dOI.querySelector(`:scope > SDI[name="${name}"]`)) !== null && _b !== void 0 ? _b : undefined;
+            let sDiDesc = sDi === null || sDi === void 0 ? void 0 : sDi.getAttribute('desc');
+            if (!sDiDesc) {
+                sDiDesc =
+                    (_d = (_c = sDi === null || sDi === void 0 ? void 0 : sDi.querySelector(':scope > DAI[name="d"] > Val')) === null || _c === void 0 ? void 0 : _c.textContent) !== null && _d !== void 0 ? _d : null;
+            }
+            const sDoName = `${name}${sDiDesc ? ` (${sDiDesc})` : ''}`;
             const id = `SDO: ${identity(sDoOrDa)}`;
-            children[id] = subDataObjectsObject$1(sDoOrDa);
+            children[id] = subDataObjectsObject$1(sDoOrDa, sDi);
             children[id].text = sDoName;
         }
         else {
-            const daName = (_b = sDoOrDa.getAttribute('name')) !== null && _b !== void 0 ? _b : 'UNKNOWN_DA';
+            const name = (_e = sDoOrDa.getAttribute('name')) !== null && _e !== void 0 ? _e : 'UNKNOWN_DA';
+            const dAi = (_f = dOI === null || dOI === void 0 ? void 0 : dOI.querySelector(`:scope > DAI[name="${name}"]`)) !== null && _f !== void 0 ? _f : undefined;
+            const desc = dAi === null || dAi === void 0 ? void 0 : dAi.getAttribute('desc');
+            const fc = (_g = sDoOrDa.getAttribute('fc')) !== null && _g !== void 0 ? _g : 'UNKNOWN_FC';
+            const daName = `${name}${fc ? ` - FC: ${fc}` : ''}${desc ? ` (${desc})` : ''}`;
             const id = `DA: ${identity(sDoOrDa)}`;
             if (sDoOrDa.getAttribute('bType') === 'Struct') {
-                children[id] = dataAttributeObject(sDoOrDa);
+                children[id] = dataAttributeObject(sDoOrDa, dAi);
                 children[id].text = daName;
             }
             else {
@@ -40388,10 +40487,16 @@ function anyLnObject$1(anyLn) {
     if (!lnType)
         return tree;
     Array.from(lnType.querySelectorAll('DO')).forEach(dO => {
-        var _a;
-        const doName = (_a = dO.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_DO';
+        var _a, _b, _c;
+        const name = (_a = dO.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_DO';
+        const dOi = (_b = anyLn.querySelector(`:scope > DOI[name="${name}"]`)) !== null && _b !== void 0 ? _b : undefined;
+        let desc = dOi === null || dOi === void 0 ? void 0 : dOi.getAttribute('desc');
+        if (!desc) {
+            desc = (_c = dOi === null || dOi === void 0 ? void 0 : dOi.querySelector(':scope > DAI[name="d"] > Val')) === null || _c === void 0 ? void 0 : _c.textContent;
+        }
+        const doName = `${name}${desc ? ` (${desc})` : ''}`;
         const id = `DO: ${identity(dO)}`;
-        children[id] = dataObjectObject$1(dO);
+        children[id] = dataObjectObject$1(dO, dOi);
         children[id].text = doName;
     });
     tree.children = children;
@@ -40402,7 +40507,8 @@ function lDeviceObject$1(lDevice) {
     const children = {};
     Array.from(lDevice.querySelectorAll('LN0,LN')).forEach(anyLn => {
         var _a, _b, _c;
-        const anyLnClass = `${(_a = anyLn.getAttribute('prefix')) !== null && _a !== void 0 ? _a : ''} ${(_b = anyLn.getAttribute('lnClass')) !== null && _b !== void 0 ? _b : 'UNKNOWN_INST'} ${(_c = anyLn.getAttribute('inst')) !== null && _c !== void 0 ? _c : ''}`;
+        const desc = anyLn.getAttribute('desc');
+        const anyLnClass = `${(_a = anyLn.getAttribute('prefix')) !== null && _a !== void 0 ? _a : ''} ${(_b = anyLn.getAttribute('lnClass')) !== null && _b !== void 0 ? _b : 'UNKNOWN_INST'} ${(_c = anyLn.getAttribute('inst')) !== null && _c !== void 0 ? _c : ''}${desc ? ` (${desc})` : ''}`;
         const id = `${anyLn.tagName}: ${identity(anyLn)}`;
         children[id] = anyLnObject$1(anyLn);
         children[id].text = anyLnClass;
@@ -40414,7 +40520,8 @@ function dataAttributeTree(server) {
     const tree = {};
     Array.from(server.querySelectorAll('LDevice')).forEach(lDevice => {
         var _a;
-        const lDeviceInst = (_a = lDevice.getAttribute('inst')) !== null && _a !== void 0 ? _a : 'UNKNOWN_LDEVICE';
+        const desc = lDevice.getAttribute('desc');
+        const lDeviceInst = `${(_a = lDevice.getAttribute('inst')) !== null && _a !== void 0 ? _a : 'UNKNOWN_LDEVICE'}${desc ? ` (${desc})` : ''}`;
         const id = `LDevice: ${identity(lDevice)}`;
         tree[id] = lDeviceObject$1(lDevice);
         tree[id].text = lDeviceInst;
@@ -40423,22 +40530,29 @@ function dataAttributeTree(server) {
 }
 
 /* eslint-disable import/no-extraneous-dependencies */
-function subDataObjectsObject(sdo) {
+function subDataObjectsObject(sdo, sDiOrDai) {
     const tree = {};
     const children = {};
     const doType = sdo.ownerDocument.querySelector(`DOType[id="${sdo.getAttribute('type')}"]`);
     if (!doType)
         return tree;
-    Array.from(doType.querySelectorAll('SDO,DA')).forEach(sDoOrDa => {
-        var _a, _b;
+    Array.from(doType.querySelectorAll(':scope > SDO, :scope > DA')).forEach(sDoOrDa => {
+        var _a, _b, _c, _d, _e;
         if (sDoOrDa.tagName === 'SDO') {
-            const sDoName = (_a = sDoOrDa.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_SDO';
+            const name = (_a = sDoOrDa.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_SDO';
+            const sdi = (_b = sDiOrDai === null || sDiOrDai === void 0 ? void 0 : sDiOrDai.querySelector(`:scope > SDI[name="${name}"]`)) !== null && _b !== void 0 ? _b : undefined;
+            let desc = sdi === null || sdi === void 0 ? void 0 : sdi.getAttribute('desc');
+            if (!desc) {
+                desc =
+                    (_d = (_c = sdi === null || sdi === void 0 ? void 0 : sdi.querySelector(':scope > DAI[name="d"] > Val')) === null || _c === void 0 ? void 0 : _c.textContent) !== null && _d !== void 0 ? _d : null;
+            }
+            const sDoName = `${name}${desc ? ` (${desc})` : ''}`;
             const id = `SDO: ${identity(sDoOrDa)}`;
-            children[id] = subDataObjectsObject(sDoOrDa);
+            children[id] = subDataObjectsObject(sDoOrDa, sdi);
             children[id].text = sDoName;
         }
         else {
-            const fc = (_b = sDoOrDa.getAttribute('fc')) !== null && _b !== void 0 ? _b : 'UNKNOWN_DA';
+            const fc = (_e = sDoOrDa.getAttribute('fc')) !== null && _e !== void 0 ? _e : 'UNKNOWN_FC';
             const id = `FC: ${fc}`;
             children[id] = {};
             children[id].text = id;
@@ -40447,22 +40561,29 @@ function subDataObjectsObject(sdo) {
     tree.children = children;
     return tree;
 }
-function dataObjectObject(dO) {
+function dataObjectObject(dO, dOI) {
     const tree = {};
     const children = {};
     const doType = dO.ownerDocument.querySelector(`DOType[id="${dO.getAttribute('type')}"]`);
     if (!doType)
         return tree;
-    Array.from(doType.querySelectorAll('SDO,DA')).forEach(sDoOrDa => {
-        var _a, _b;
+    Array.from(doType.querySelectorAll(':scope > SDO, :scope > DA')).forEach(sDoOrDa => {
+        var _a, _b, _c, _d, _e;
         if (sDoOrDa.tagName === 'SDO') {
-            const sDoName = (_a = sDoOrDa.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_SDO';
+            const name = (_a = sDoOrDa.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_SDO';
+            const sDi = (_b = dOI === null || dOI === void 0 ? void 0 : dOI.querySelector(`:scope > SDI[name="${name}"]`)) !== null && _b !== void 0 ? _b : undefined;
+            let sDiDesc = sDi === null || sDi === void 0 ? void 0 : sDi.getAttribute('desc');
+            if (!sDiDesc) {
+                sDiDesc =
+                    (_d = (_c = sDi === null || sDi === void 0 ? void 0 : sDi.querySelector(':scope > DAI[name="d"] > Val')) === null || _c === void 0 ? void 0 : _c.textContent) !== null && _d !== void 0 ? _d : null;
+            }
+            const sDoName = `${name}${sDiDesc ? ` (${sDiDesc})` : ''}`;
             const id = `SDO: ${identity(sDoOrDa)}`;
-            children[id] = subDataObjectsObject(sDoOrDa);
+            children[id] = subDataObjectsObject(sDoOrDa, sDi);
             children[id].text = sDoName;
         }
         else {
-            const fc = (_b = sDoOrDa.getAttribute('fc')) !== null && _b !== void 0 ? _b : 'UNKNOWN_DA';
+            const fc = (_e = sDoOrDa.getAttribute('fc')) !== null && _e !== void 0 ? _e : 'UNKNOWN_DA';
             const id = `FC: ${fc}`;
             children[id] = {};
             children[id].text = id;
@@ -40477,11 +40598,17 @@ function anyLnObject(anyLn) {
     const lnType = anyLn.ownerDocument.querySelector(`LNodeType[id="${anyLn.getAttribute('lnType')}"]`);
     if (!lnType)
         return tree;
-    Array.from(lnType.querySelectorAll('DO')).forEach(dO => {
-        var _a;
-        const doName = (_a = dO.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_DO';
+    Array.from(lnType.querySelectorAll(':scope > DO')).forEach(dO => {
+        var _a, _b, _c;
+        const name = (_a = dO.getAttribute('name')) !== null && _a !== void 0 ? _a : 'UNKNOWN_DO';
+        const dOi = (_b = anyLn.querySelector(`:scope > DOI[name="${name}"]`)) !== null && _b !== void 0 ? _b : undefined;
+        let desc = dOi === null || dOi === void 0 ? void 0 : dOi.getAttribute('desc');
+        if (!desc) {
+            desc = (_c = dOi === null || dOi === void 0 ? void 0 : dOi.querySelector(':scope > DAI[name="d"] > Val')) === null || _c === void 0 ? void 0 : _c.textContent;
+        }
+        const doName = `${name}${desc ? ` (${desc})` : ''}`;
         const id = `DO: ${identity(dO)}`;
-        children[id] = dataObjectObject(dO);
+        children[id] = dataObjectObject(dO, dOi);
         children[id].text = doName;
     });
     tree.children = children;
@@ -40490,9 +40617,10 @@ function anyLnObject(anyLn) {
 function lDeviceObject(lDevice) {
     const tree = {};
     const children = {};
-    Array.from(lDevice.querySelectorAll('LN0,LN')).forEach(anyLn => {
+    Array.from(lDevice.querySelectorAll(':scope > LN0, :scope > LN')).forEach(anyLn => {
         var _a, _b, _c;
-        const anyLnClass = `${(_a = anyLn.getAttribute('prefix')) !== null && _a !== void 0 ? _a : ''} ${(_b = anyLn.getAttribute('lnClass')) !== null && _b !== void 0 ? _b : 'UNKNOWN_INST'} ${(_c = anyLn.getAttribute('inst')) !== null && _c !== void 0 ? _c : ''}`;
+        const desc = anyLn.getAttribute('desc');
+        const anyLnClass = `${(_a = anyLn.getAttribute('prefix')) !== null && _a !== void 0 ? _a : ''} ${(_b = anyLn.getAttribute('lnClass')) !== null && _b !== void 0 ? _b : 'UNKNOWN_INST'} ${(_c = anyLn.getAttribute('inst')) !== null && _c !== void 0 ? _c : ''}${desc ? ` (${desc})` : ''}`;
         const id = `${anyLn.tagName}: ${identity(anyLn)}`;
         children[id] = anyLnObject(anyLn);
         children[id].text = anyLnClass;
@@ -40504,7 +40632,8 @@ function dataObjectTree(server) {
     const tree = {};
     Array.from(server.querySelectorAll('LDevice')).forEach(lDevice => {
         var _a;
-        const lDeviceInst = (_a = lDevice.getAttribute('inst')) !== null && _a !== void 0 ? _a : 'UNKNOWN_LDEVICE';
+        const desc = lDevice.getAttribute('desc');
+        const lDeviceInst = `${(_a = lDevice.getAttribute('inst')) !== null && _a !== void 0 ? _a : 'UNKNOWN_LDEVICE'}${desc ? ` (${desc})` : ''}`;
         const id = `LDevice: ${identity(lDevice)}`;
         tree[id] = lDeviceObject(lDevice);
         tree[id].text = lDeviceInst;
@@ -40680,15 +40809,19 @@ class DataSetElementEditor extends ScopedElementsMixin(r$4) {
                         this.onMoveFCDADown(fcda);
                     },
                 });
+            const description = Object.values(getFcdaInstDesc(fcda))
+                .flat(Infinity)
+                .join(' > ');
             return {
-                headline: `${doName}${daName ? `.${daName} [${fc}]` : ` [${fc}]`}`,
-                supportingText: `${ldInst}/${prefix}${lnClass}${lnInst}`,
+                headline: `${ldInst}/${prefix}${lnClass}${lnInst}.${doName}${daName ? `.${daName} [${fc}]` : ` [${fc}]`}`,
+                supportingText: description,
                 actions,
             };
         });
         return x `<action-list
       class="list fcda"
       .items=${items}
+      height="84"
       filterable
       searchhelper="Filter Data"
     ></action-list>`;
@@ -40781,7 +40914,7 @@ class DataSetElementEditor extends ScopedElementsMixin(r$4) {
         id="${identity(this.element)}"
         label="desc"
         .value=${this.desc}
-        supportingText="DateSet Description"
+        supportingText="DataSet Description"
         nullable
         @input=${() => this.onInputChange()}
       >
