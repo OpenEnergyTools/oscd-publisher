@@ -31,10 +31,11 @@ export const styles = css`
   }
 
   .selectionlist {
-    flex: 35%;
+    width: 35%;
     margin: 4px 4px 4px 8px;
     background-color: var(--mdc-theme-surface, white);
     overflow-y: scroll;
+    resize: horizontal;
   }
 
   .elementeditorcontainer {
@@ -74,6 +75,7 @@ export const styles = css`
     }
 
     .selectionlist {
+      display: flex;
       position: absolute;
       width: calc(100% - 32px);
       height: auto;
